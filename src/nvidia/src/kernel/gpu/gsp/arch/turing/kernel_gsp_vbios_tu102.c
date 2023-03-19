@@ -33,7 +33,7 @@
  */
 
 #include "gpu/gsp/kernel_gsp.h"
-#include "gpu/bif/kernel_bif.h"
+#include "gpu/pmu/kern_pmu.h"
 
 #include "platform/pci_exp_table.h" // PCI_EXP_ROM_*
 #include "gpu/gpu.h"
@@ -452,7 +452,7 @@ kgspExtractVbiosFromRom_TU102
     NV_STATUS status = NV_OK;
 
     KernelGspVbiosImg *pVbiosImg = NULL;
-    KernelBif *pKernelBif = GPU_GET_KERNEL_BIF(pGpu);
+    KernelPmu *pKernelPmu = GPU_GET_KERNEL_PMU(pGpu);
 
     RomImgSrc src;
     NvU32 romSig;
@@ -479,9 +479,9 @@ kgspExtractVbiosFromRom_TU102
     src.maxOffset = biosSize;
     src.pGpu = pGpu;
 
-    if (pKernelBif != NULL)
+    if (pKernelPmu != NULL)
     {
-        status = kbifPreOsGlobalErotGrantRequest_HAL(pGpu, pKernelBif);
+        status = kpmuPreOsGlobalErotGrantRequest_HAL(pGpu, pKernelPmu);
         if (status != NV_OK)
         {
             NV_PRINTF(LEVEL_ERROR, "ERoT Req/Grant for EEPROM access failed, status=%u\n",

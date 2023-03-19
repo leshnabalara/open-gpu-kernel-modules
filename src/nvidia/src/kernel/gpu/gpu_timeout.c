@@ -314,11 +314,8 @@ _checkTimeout
         osGetCurrentTick(&timeInNs);
         if (timeInNs >= pTimeout->timeout)
         {
-            if (!(pTimeout->flags & GPU_TIMEOUT_FLAGS_BYPASS_JOURNAL_LOG))
-            {
-                NV_PRINTF(LEVEL_INFO, "OS elapsed %llx >= %llx\n",
-                          timeInNs, pTimeout->timeout);
-            }
+            NV_PRINTF(LEVEL_INFO, "OS elapsed %llx >= %llx\n",
+                      timeInNs, pTimeout->timeout);
             status = NV_ERR_TIMEOUT;
         }
     }
@@ -348,10 +345,7 @@ _checkTimeout
 
         if (pTimeout->timeout == 0)
         {
-            if (!(pTimeout->flags & GPU_TIMEOUT_FLAGS_BYPASS_JOURNAL_LOG))
-            {
-                NV_PRINTF(LEVEL_INFO, "OS timeout == 0\n");
-            }
+            NV_PRINTF(LEVEL_INFO, "OS timeout == 0\n");
             status =  NV_ERR_TIMEOUT;
         }
     }

@@ -77,9 +77,9 @@ typedef struct GSP_ACR_BOOT_GSP_RM_PARAMS
  */
 typedef struct GSP_RM_PARAMS
 {
-    // Physical memory aperture through which bootArgsOffset is accessed
+    // Physical memory aperture through which bootArgsPa is accessed
     GSP_DMA_TARGET target;
-    // Physical offset in the memory aperture that will be passed to GSP-RM
+    // Physical address that will be stuffed in NV_PGSP_FALCON_MAILBOX(0|1)
     NvU64          bootArgsOffset;
 } GSP_RM_PARAMS;
 

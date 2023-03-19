@@ -232,8 +232,6 @@ gsyncP2060StartupProvider(OBJGSYNC *pGsync)
     pGsync->gsyncHal.gsyncSetInterlaceMode   = gsyncSetInterlaceMode_P2060;
     pGsync->gsyncHal.gsyncGetStereoLockMode  = gsyncGetStereoLockMode_P2060;
     pGsync->gsyncHal.gsyncSetStereoLockMode  = gsyncSetStereoLockMode_P2060;
-    pGsync->gsyncHal.gsyncGetMulDiv          = gsyncGetMulDiv_P2060;
-    pGsync->gsyncHal.gsyncSetMulDiv          = gsyncSetMulDiv_P2060;
 
     pGsync->gsyncHal.gsyncRefSwapBarrier     = gsyncRefSwapBarrier_P2060;
     pGsync->gsyncHal.gsyncSetMosaic          = gsyncSetMosaic_P2060;
@@ -1232,39 +1230,34 @@ gsyncGetStatusParams(OBJGSYNC *pGsync,
 
     if ( pParams->which & NV30F1_CTRL_GSYNC_GET_CONTROL_SYNC_POLARITY )
     {
-        NV_CHECK_OK_OR_CAPTURE_FIRST_ERROR(status, LEVEL_INFO, pGsync->gsyncHal.gsyncGetSyncPolarity(pGpu, pGsync->pExtDev, &SyncPolarity));
+        status |= pGsync->gsyncHal.gsyncGetSyncPolarity(pGpu, pGsync->pExtDev, &SyncPolarity);
         pParams->syncPolarity = (NvU32)SyncPolarity;
     }
 
     if ( pParams->which & NV30F1_CTRL_GSYNC_GET_CONTROL_VIDEO_MODE )
     {
-        NV_CHECK_OK_OR_CAPTURE_FIRST_ERROR(status, LEVEL_INFO, pGsync->gsyncHal.gsyncGetVideoMode(pGpu, pGsync->pExtDev, &VideoMode));
+        status |= pGsync->gsyncHal.gsyncGetVideoMode(pGpu, pGsync->pExtDev, &VideoMode);
         pParams->syncVideoMode = (NvU32)VideoMode;
     }
 
     if ( pParams->which & NV30F1_CTRL_GSYNC_GET_CONTROL_NSYNC )
     {
-        NV_CHECK_OK_OR_CAPTURE_FIRST_ERROR(status, LEVEL_INFO, pGsync->gsyncHal.gsyncGetNSync(pGpu, pGsync->pExtDev, &pParams->nSync));
+        status |= pGsync->gsyncHal.gsyncGetNSync(pGpu, pGsync->pExtDev, &pParams->nSync);
     }
 
     if ( pParams->which & NV30F1_CTRL_GSYNC_GET_CONTROL_SYNC_SKEW )
     {
-        NV_CHECK_OK_OR_CAPTURE_FIRST_ERROR(status, LEVEL_INFO, pGsync->gsyncHal.gsyncGetSyncSkew(pGpu, pGsync->pExtDev, &pParams->syncSkew));
+        status |= pGsync->gsyncHal.gsyncGetSyncSkew(pGpu, pGsync->pExtDev, &pParams->syncSkew);
     }
 
     if ( pParams->which & NV30F1_CTRL_GSYNC_GET_CONTROL_SYNC_START_DELAY )
     {
-        NV_CHECK_OK_OR_CAPTURE_FIRST_ERROR(status, LEVEL_INFO, pGsync->gsyncHal.gsyncGetSyncStartDelay(pGpu, pGsync->pExtDev, &pParams->syncStartDelay));
+        status |= pGsync->gsyncHal.gsyncGetSyncStartDelay(pGpu, pGsync->pExtDev, &pParams->syncStartDelay);
     }
 
     if ( pParams->which & NV30F1_CTRL_GSYNC_GET_CONTROL_SYNC_USE_HOUSE )
     {
-        NV_CHECK_OK_OR_CAPTURE_FIRST_ERROR(status, LEVEL_INFO, pGsync->gsyncHal.gsyncGetUseHouse(pGpu, pGsync->pExtDev, &pParams->useHouseSync));
-    }
-
-    if ( pParams->which & NV30F1_CTRL_GSYNC_GET_CONTROL_SYNC_MULTIPLY_DIVIDE )
-    {
-        NV_CHECK_OK_OR_CAPTURE_FIRST_ERROR(status, LEVEL_INFO, pGsync->gsyncHal.gsyncGetMulDiv(pGpu, pGsync->pExtDev, &pParams->syncMulDiv));
+        status |= pGsync->gsyncHal.gsyncGetUseHouse(pGpu, pGsync->pExtDev, &pParams->useHouseSync);
     }
 
     return status;
@@ -1313,11 +1306,6 @@ gsyncSetControlParams(OBJGSYNC *pGsync,
     if ( pParams->which & NV30F1_CTRL_GSYNC_SET_CONTROL_SYNC_USE_HOUSE )
     {
         status |= pGsync->gsyncHal.gsyncSetUseHouse(pGpu, pGsync->pExtDev, pParams->useHouseSync);
-    }
-
-    if ( pParams->which & NV30F1_CTRL_GSYNC_SET_CONTROL_SYNC_MULTIPLY_DIVIDE )
-    {
-        status |= pGsync->gsyncHal.gsyncSetMulDiv(pGpu, pGsync->pExtDev, &pParams->syncMulDiv);
     }
 
     return status;
@@ -2465,28 +2453,6 @@ gsyncNullSetHouseSyncMode
 }
 
 static NV_STATUS
-gsyncNullGetMulDiv
-(
-    OBJGPU       *pGpu,
-    DACEXTERNALDEVICE *pExtDev,
-    NV30F1_CTRL_GSYNC_MULTIPLY_DIVIDE_SETTINGS *pMulDivSettings
-)
-{
-    return NV_ERR_NOT_SUPPORTED;
-}
-
-static NV_STATUS
-gsyncNullSetMulDiv
-(
-    OBJGPU       *pGpu,
-    DACEXTERNALDEVICE *pExtDev,
-    NV30F1_CTRL_GSYNC_MULTIPLY_DIVIDE_SETTINGS *pMulDivSettings
-)
-{
-    return NV_ERR_NOT_SUPPORTED;
-}
-
-static NV_STATUS
 gsyncSetupNullProvider(OBJGSYNCMGR *pGsyncMgr, NvU32 gsyncInst)
 {
     OBJGSYNC *pGsync;
@@ -2530,8 +2496,6 @@ gsyncSetupNullProvider(OBJGSYNCMGR *pGsyncMgr, NvU32 gsyncInst)
     pGsync->gsyncHal.gsyncConfigFlashGsync     = gsyncNullConfigFlashGsync;
     pGsync->gsyncHal.gsyncGetHouseSyncMode     = gsyncNullGetHouseSyncMode;
     pGsync->gsyncHal.gsyncSetHouseSyncMode     = gsyncNullSetHouseSyncMode;
-    pGsync->gsyncHal.gsyncGetMulDiv            = gsyncNullGetMulDiv;
-    pGsync->gsyncHal.gsyncSetMulDiv            = gsyncNullSetMulDiv;
 
     return status;
 }

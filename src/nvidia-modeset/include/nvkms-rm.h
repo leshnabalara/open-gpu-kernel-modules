@@ -126,19 +126,16 @@ void nvRmFreeEvoDma(NVDevEvoPtr pDevEvo, NVEvoDmaPtr pDma);
 NvBool nvRmQueryDpAuxLog(NVDispEvoRec *pDispEvo, NvS64 *pValue);
 NvU64 nvRmGetGpuTime(NVDevEvoPtr pDevEvo);
 NvBool nvRmSetGc6Allowed(NVDevEvoPtr pDevEvo, NvBool allowed);
-NVRgLine1CallbackPtr
-nvRmAddRgLine1Callback(NVDispEvoRec *pDispEvo,
-                       NvU32 head,
-                       NVRgLine1CallbackProc pCallbackProc,
-                       void *pUserData);
+NvU32 nvRmAddRgLine1Callback(
+    const NVDispEvoRec *pDispEvo,
+    NvU32 head,
+    NV0092_REGISTER_RG_LINE_CALLBACK_FN pCallback);
 void nvRmRemoveRgLine1Callback(const NVDispEvoRec *pDispEvo,
-                               NVRgLine1CallbackPtr pCallback);
-
+                               NvU32 callbackObjectHandle);
 NvU32 nvRmAddVBlankCallback(
     const NVDispEvoRec *pDispEvo,
     NvU32 head,
-    OSVBLANKCALLBACKPROC pCallback,
-    void *pParam2);
+    OSVBLANKCALLBACKPROC pCallback);
 void nvRmRemoveVBlankCallback(const NVDispEvoRec *pDispEvo,
                               NvU32 callbackObjectHandle);
 void nvRmMuxInit(NVDevEvoPtr pDevEvo);
@@ -149,9 +146,6 @@ NvMuxState nvRmMuxState(const NVDpyEvoRec *pDpyEvo);
 
 void nvRmRegisterBacklight(NVDispEvoRec *pDispEvo);
 void nvRmUnregisterBacklight(NVDispEvoRec *pDispEvo);
-
-void nvRmAllocCoreRGSyncpts(NVDevEvoPtr pDevEvo);
-void nvRmFreeCoreRGSyncpts(NVDevEvoPtr pDevEvo);
 
 #ifdef __cplusplus
 };

@@ -546,24 +546,17 @@ _gpuFabricProbeSetupFlaRange
 void
 _gpuFabricProbeReceive
 (
-    NvU32 gpuInstance,
+    OBJGPU *pGpu,
     NV2080_CTRL_NVLINK_INBAND_RECEIVED_DATA_PARAMS *pInbandRcvParams
 )
 {
-    OBJGPU *pGpu;
-    NvU32 gpuMaskUnused;
     nvlink_inband_gpu_probe_rsp_msg_t *pProbeRespMsg;
     GPU_FABRIC_PROBE_INFO *pGpuFabricProbeInfo;
     nvlink_inband_gpu_probe_req_msg_t *pProbeReqMsg = NULL;
     NvU8 *pRsvd = NULL;
+    OBJSYS *pSys = SYS_GET_INSTANCE();
 
-    if ((pGpu = gpumgrGetGpu(gpuInstance)) == NULL)
-    {
-        NV_ASSERT_FAILED("Invalid GPU instance");
-        return;
-    }
-
-    NV_ASSERT(rmGpuGroupLockIsOwner(gpuInstance, GPU_LOCK_GRP_SUBDEVICE, &gpuMaskUnused));
+    NV_ASSERT(rmDeviceGpuLockIsOwner(gpuGetInstance(pGpu)));
 
     NV_ASSERT(pInbandRcvParams != NULL);
 
@@ -577,7 +570,7 @@ _gpuFabricProbeReceive
     {
         NV_PRINTF(LEVEL_INFO,
                   "GPU%u Probe resp invalid reqId %lld respId %lld\n",
-                  gpuInstance,
+                  gpuGetInstance(pGpu),
                   pProbeReqMsg->msgHdr.requestId,
                   pProbeRespMsg->msgHdr.requestId);
         return;
@@ -603,6 +596,15 @@ _gpuFabricProbeReceive
                             _gpuFabricProbeFullSanityCheck(pGpuFabricProbeInfo) == NV_OK);
     _gpuFabricProbeSetupGpaRange(pGpu, pGpuFabricProbeInfo);
     _gpuFabricProbeSetupFlaRange(pGpu, pGpuFabricProbeInfo);
+
+    // if MC FLA is disabled, reset the fmCaps
+    if (!pSys->bMulticastFlaEnabled)
+    {
+        pGpuFabricProbeInfo->probeResponseMsg.probeRsp.fmCaps &= 
+                             ~NVLINK_INBAND_FM_CAPS_MC_TEAM_SETUP_V1;
+        pGpuFabricProbeInfo->probeResponseMsg.probeRsp.fmCaps &= 
+                             ~NVLINK_INBAND_FM_CAPS_MC_TEAM_RELEASE_V1;
+    }
 }
 
 void

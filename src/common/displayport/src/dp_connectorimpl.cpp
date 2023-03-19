@@ -116,7 +116,6 @@ ConnectorImpl::ConnectorImpl(MainLink * main, AuxBus * auxBus, Timer * timer, Co
       bKeepOptLinkAlive(false),
       bNoFallbackInPostLQA(false),
       LT2FecLatencyMs(0),
-      bFECEnable(false),
       bDscCapBasedOnParent(false),
       ResStatus(this)
 {
@@ -127,6 +126,7 @@ ConnectorImpl::ConnectorImpl(MainLink * main, AuxBus * auxBus, Timer * timer, Co
         constructorFailed = true;
         return;
     }
+    highestAssessedLC = getMaxLinkConfig();
     firmwareGroup = createFirmwareGroup();
 
     if (firmwareGroup == NULL)
@@ -134,9 +134,6 @@ ConnectorImpl::ConnectorImpl(MainLink * main, AuxBus * auxBus, Timer * timer, Co
         constructorFailed = true;
         return;
     }
-
-    main->queryGPUCapability();
-    main->queryAndUpdateDfpParams();
 
     hal->setPC2Disabled(main->isPC2Disabled());
 
@@ -152,12 +149,9 @@ ConnectorImpl::ConnectorImpl(MainLink * main, AuxBus * auxBus, Timer * timer, Co
     // Set if LTTPR training is supported per regKey
     hal->setLttprSupported(main->isLttprSupported());
 
-
     const DP_REGKEY_DATABASE& dpRegkeyDatabase = main->getRegkeyDatabase();
     this->applyRegkeyOverrides(dpRegkeyDatabase);
     hal->applyRegkeyOverrides(dpRegkeyDatabase);
-
-    highestAssessedLC = getMaxLinkConfig();
 
     // Initialize DSC callbacks
     DSC_CALLBACK callback;
@@ -194,6 +188,7 @@ void ConnectorImpl::applyRegkeyOverrides(const DP_REGKEY_DATABASE& dpRegkeyDatab
     this->bDisableSSC                   = dpRegkeyDatabase.bSscDisabled;
     this->bEnableFastLT                 = dpRegkeyDatabase.bFastLinkTrainingEnabled;
     this->bDscMstCapBug3143315          = dpRegkeyDatabase.bDscMstCapBug3143315;
+    this->bEnableOuiRestoring           = dpRegkeyDatabase.bEnableOuiRestoring;
     this->bPowerDownPhyBeforeD3         = dpRegkeyDatabase.bPowerDownPhyBeforeD3;
 }
 
@@ -711,7 +706,7 @@ create:
 
     newDev->applyOUIOverrides();
 
-    if (main->isEDP())
+    if (main->isEDP() && this->bEnableOuiRestoring)
     {
         // Save Source OUI information for eDP.
         hal->getOuiSource(cachedSourceOUI, &cachedSourceModelName[0],
@@ -1866,7 +1861,7 @@ void ConnectorImpl::populateDscCaps(DSC_INFO* dscInfo, DeviceImpl * dev, DSC_INF
 
 bool ConnectorImpl::endCompoundQuery()
 {
-    DP_ASSERT(compoundQueryActive && "Spurious compoundQuery end.");
+    DP_ASSERT( compoundQueryActive && "Spurious compoundQuery end.");
     compoundQueryActive = false;
     return compoundQueryResult;
 }
@@ -1895,7 +1890,7 @@ void ConnectorImpl::releaseLinkHandsOff()
 {
     if (!isLinkQuiesced)
     {
-        DP_LOG(("DPCONN> Link is already in use."));
+        DP_ASSERT(0 && "Link is already in use.");
         return;
     }
 
@@ -2700,7 +2695,7 @@ bool ConnectorImpl::notifyAttachBegin(Group *                target,       // Gr
     this->bFECEnable |= bEnableFEC;
     highestAssessedLC.enableFEC(this->bFECEnable);
 
-    if (main->isEDP())
+    if (main->isEDP() && this->bEnableOuiRestoring)
     {
       main->configurePowerState(true);
       hal->setOuiSource(cachedSourceOUI, &cachedSourceModelName[0], 6 /* string length of ieeeOuiDevId */,
@@ -3135,6 +3130,8 @@ bool ConnectorImpl::trainPCONFrlLink(PCONLinkControl *pconControl)
 
 bool ConnectorImpl::assessPCONLinkCapability(PCONLinkControl *pConControl)
 {
+    NvU32 status;
+
     if (pConControl == NULL || !this->previousPlugged)
         return false;
 
@@ -3147,7 +3144,8 @@ bool ConnectorImpl::assessPCONLinkCapability(PCONLinkControl *pConControl)
 
     if (pConControl->flags.bSourceControlMode)
     {
-        if (trainPCONFrlLink(pConControl) == false)
+        status = trainPCONFrlLink(pConControl);
+        if (status == false)
         {
             // restore Autonomous mode and treat this as an active DP dongle.
             hal->resetProtocolConverter();
@@ -3158,16 +3156,11 @@ bool ConnectorImpl::assessPCONLinkCapability(PCONLinkControl *pConControl)
                 bSkipAssessLinkForPCon = false;
                 assessLink();
             }
-            return false;
+            return status;
         }
         activePConLinkControl.flags = pConControl->flags;
         activePConLinkControl.frlHdmiBwMask = pConControl->frlHdmiBwMask;
         activePConLinkControl.result = pConControl->result;
-    }
-    else
-    {
-        // restore Autonomous mode and treat this as an active DP dongle.
-        hal->resetProtocolConverter();
     }
 
     // Step 3: Assess DP Link capability.
@@ -3194,7 +3187,7 @@ bool ConnectorImpl::assessPCONLinkCapability(PCONLinkControl *pConControl)
     disableFlush();
 
     this->bKeepLinkAliveForPCON = pConControl->flags.bKeepPCONLinkAlive;
-    return true;
+    return status;
 }
 
 bool ConnectorImpl::getOuiSink(unsigned &ouiId, char * modelName, size_t modelNameBufferSize, NvU8 & chipRevision)
@@ -5658,7 +5651,7 @@ void ConnectorImpl::notifyLongPulseInternal(bool statusConnected)
         // Reset all settings for previous downstream device
         configInit();
 
-        if (!hal->isAtLeastVersion(1, 0))
+        if (! hal->isAtLeastVersion(1, 0 ) )
             goto completed;
 
         DP_LOG(("DP> HPD v%d.%d", hal->getRevisionMajor(), hal->getRevisionMinor()));
@@ -6920,6 +6913,7 @@ void ConnectorImpl::notifyGPUCapabilityChange()
 {
     // Query current GPU capabilities.
     main->queryGPUCapability();
+
 }
 
 void ConnectorImpl::notifyHBR2WAREngage()

@@ -62,8 +62,6 @@ enum NvKmsAllocDeviceStatus nvAssignEvoCaps(NVDevEvoPtr pDevEvo)
               _supportsHDMI20,                                            \
               _inputLutAppliesToBase,                                     \
               _genericPageKind,                                           \
-              _dpYCbCr422MaxBpc,                                          \
-              _hdmiYCbCr422MaxBpc,                                        \
               _validNIsoFormatMask,                                       \
               _maxPitch,                                                  \
               _maxWidthInBytes,                                           \
@@ -93,8 +91,6 @@ enum NvKmsAllocDeviceStatus nvAssignEvoCaps(NVDevEvoPtr pDevEvo)
             .genericPageKind           = _genericPageKind,                \
             .maxRasterWidth  = DRF_MASK(NV ## _classPrefix ## 7D_HEAD_SET_RASTER_SIZE_WIDTH), \
             .maxRasterHeight = DRF_MASK(NV ## _classPrefix ## 7D_HEAD_SET_RASTER_SIZE_HEIGHT),\
-            .dpYCbCr422MaxBpc = _dpYCbCr422MaxBpc,                        \
-            .hdmiYCbCr422MaxBpc = _hdmiYCbCr422MaxBpc,                    \
         }                                                                 \
     }
 
@@ -177,25 +173,23 @@ enum NvKmsAllocDeviceStatus nvAssignEvoCaps(NVDevEvoPtr pDevEvo)
         const NVEvoCapsRec evoCaps;
     } dispTable[] = {
         /*
-         * hdmiYCbCr422MaxBpc-----------------------------------------+
-         * dpYCbCr422MaxBpc---------------------------------------+   |
-         * genericPageKind---------------------+                  |   |
-         * inputLutAppliesToBase ---------+    |                  |   |
-         * supportsHDMI20 -------------+  |    |                  |   |
-         * supportsDP13 ------------+  |  |    |                  |   |
-         * pEvoHal --------------+  |  |  |    |                  |   |
-         * windowClassPrefix     |  |  |  |    |                  |   |
-         * classPrefix |         |  |  |  |    |                  |   |
-         *         |   |         |  |  |  |    |                  |   |
+         * genericPageKind---------------------+
+         * inputLutAppliesToBase ---------+    |
+         * supportsHDMI20 -------------+  |    |
+         * supportsDP13 ------------+  |  |    |
+         * pEvoHal --------------+  |  |  |    |
+         * windowClassPrefix     |  |  |  |    |
+         * classPrefix |         |  |  |  |    |
+         *         |   |         |  |  |  |    |
          */
-        ENTRY_NVD(C7, C6, &nvEvoC6, 1, 1, 0, TURING_GENERIC_KIND, 12, 12),
-        ENTRY_NVD(C6, C6, &nvEvoC6, 1, 1, 0, TURING_GENERIC_KIND, 12, 12),
-        ENTRY_NVD(C5, C5, &nvEvoC5, 1, 1, 0, TURING_GENERIC_KIND, 12, 12),
-        ENTRY_NVD(C3, C3, &nvEvoC3, 1, 1, 0, FERMI_GENERIC_KIND,  12, 12),
-        ENTRY_EVO(98,     &nvEvo94, 1, 1, 1, FERMI_GENERIC_KIND,  12, 12),
-        ENTRY_EVO(97,     &nvEvo94, 1, 1, 1, FERMI_GENERIC_KIND,  12, 12),
-        ENTRY_EVO(95,     &nvEvo94, 0, 1, 1, FERMI_GENERIC_KIND,   8,  0),
-        ENTRY_EVO(94,     &nvEvo94, 0, 0, 1, FERMI_GENERIC_KIND,   8,  0),
+        ENTRY_NVD(C7, C6, &nvEvoC6, 1, 1, 0, TURING_GENERIC_KIND),
+        ENTRY_NVD(C6, C6, &nvEvoC6, 1, 1, 0, TURING_GENERIC_KIND),
+        ENTRY_NVD(C5, C5, &nvEvoC5, 1, 1, 0, TURING_GENERIC_KIND),
+        ENTRY_NVD(C3, C3, &nvEvoC3, 1, 1, 0, FERMI_GENERIC_KIND),
+        ENTRY_EVO(98,     &nvEvo94, 1, 1, 1, FERMI_GENERIC_KIND),
+        ENTRY_EVO(97,     &nvEvo94, 1, 1, 1, FERMI_GENERIC_KIND),
+        ENTRY_EVO(95,     &nvEvo94, 0, 1, 1, FERMI_GENERIC_KIND),
+        ENTRY_EVO(94,     &nvEvo94, 0, 0, 1, FERMI_GENERIC_KIND),
     };
 
     int i;

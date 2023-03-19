@@ -89,8 +89,8 @@ tmrSetCurrentTime_GM107
 NV_STATUS
 tmrGetGpuAndCpuTimestampPair_GM107
 (
-    OBJGPU  *pGpu,
-    OBJTMR  *pTmr,
+    POBJGPU  pGpu,
+    POBJTMR  pTmr,
     NvU64   *pGpuTime,
     NvU64   *pCpuTime
 )
@@ -165,8 +165,8 @@ tmrGetGpuAndCpuTimestampPair_GM107
 NV_STATUS
 tmrGetGpuPtimerOffset_GM107
 (
-    OBJGPU  *pGpu,
-    OBJTMR  *pTmr,
+    POBJGPU  pGpu,
+    POBJTMR  pTmr,
     NvU32   *pGpuTimestampOffsetLo,
     NvU32   *pGpuTimestampOffsetHi
 )

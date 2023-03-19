@@ -43,4 +43,3 @@
 #include "ctrl0073/ctrl0073svp.h"
 #include "ctrl0073/ctrl0073dpu.h"
 #include "ctrl0073/ctrl0073psr.h"
-#include "ctrl0073/ctrl0073common.h"

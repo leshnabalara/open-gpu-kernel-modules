@@ -47,8 +47,9 @@ void nvSendFrameLockAttributeChangedEventEvo(
     const enum NvKmsFrameLockAttribute attribute,
     const NvS64 value);
 
-void nvSendFlipOccurredEventEvo(const NVDispEvoRec *pDispEvo,
-                                const NvU32 apiHead, const NvU32 layer);
+void nvSendFlipOccurredEventEvo(
+    const NVDevEvoRec *pDevEvo,
+    NVEvoChannelMask channelMask);
 
 void nvSendUnicastEvent(struct NvKmsPerOpen *pOpen);
 

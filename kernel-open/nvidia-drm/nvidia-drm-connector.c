@@ -27,7 +27,6 @@
 #include "nvidia-drm-helper.h"
 #include "nvidia-drm-priv.h"
 #include "nvidia-drm-connector.h"
-#include "nvidia-drm-crtc.h"
 #include "nvidia-drm-utils.h"
 #include "nvidia-drm-encoder.h"
 
@@ -208,11 +207,6 @@ done:
 
     nv_drm_free(pDetectParams);
 
-    if (status == connector_status_disconnected &&
-        nv_connector->modeset_permission_filep) {
-        nv_drm_connector_revoke_permissions(dev, nv_connector);
-    }
-
     return status;
 }
 
@@ -378,8 +372,6 @@ nv_drm_connector_new(struct drm_device *dev,
     nv_connector->physicalIndex = physicalIndex;
     nv_connector->type     = type;
     nv_connector->internal = internal;
-    nv_connector->modeset_permission_filep = NULL;
-    nv_connector->modeset_permission_crtc = NULL;
 
     strcpy(nv_connector->dpAddress, dpAddress);
 
@@ -480,28 +472,6 @@ done:
     }
 
     return connector;
-}
-
-/*
- * Revoke the permissions on this connector.
- */
-bool nv_drm_connector_revoke_permissions(struct drm_device *dev,
-                                         struct nv_drm_connector* nv_connector)
-{
-    struct nv_drm_device *nv_dev = to_nv_device(dev);
-    bool ret = true;
-
-    if (nv_connector->modeset_permission_crtc) {
-        if (nv_connector->nv_detected_encoder) {
-            ret = nvKms->revokePermissions(
-                nv_dev->pDevice, nv_connector->modeset_permission_crtc->head,
-                nv_connector->nv_detected_encoder->hDisplay);
-        }
-        nv_connector->modeset_permission_crtc->modeset_permission_filep = NULL;
-        nv_connector->modeset_permission_crtc = NULL;
-    }
-    nv_connector->modeset_permission_filep = NULL;
-    return ret;
 }
 
 #endif

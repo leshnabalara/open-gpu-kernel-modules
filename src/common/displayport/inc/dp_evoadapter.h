@@ -182,8 +182,8 @@ namespace DisplayPort
         }_DSC;
 
     private:
-        void initializeRegkeyDatabase();
-        void applyRegkeyOverrides();
+        virtual void initializeRegkeyDatabase();
+        virtual void applyRegkeyOverrides();
 
     public:
         EvoMainLink(EvoInterface * provider, Timer * timer);

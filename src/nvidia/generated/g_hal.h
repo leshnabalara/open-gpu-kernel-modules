@@ -38,6 +38,7 @@ typedef struct IGRP_IP_VERSIONS_TABLE_INFO IGRP_IP_VERSIONS_TABLE_INFO;
 
 // generic form of Head_iGrp_ipVersions_getInfo typedef
 
+typedef NV_STATUS  IGrp_ipVersions_getInfo(IGRP_IP_VERSIONS_TABLE_INFO *);
 typedef void      IGrp_ipVersions_install(IGRP_IP_VERSIONS_TABLE_INFO *);
 typedef NV_STATUS  IGrp_ipVersions_wrapup(IGRP_IP_VERSIONS_TABLE_INFO *);
 

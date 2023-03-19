@@ -38,8 +38,7 @@ void nvEvo1PrePostIMP(NVDispEvoPtr pDispEvo, NvBool isPre);
 
 void nvEvo1SetDscParams(const NVDispEvoRec *pDispEvo,
                         const NvU32 head,
-                        const NVHwModeTimingsEvo *pTimings,
-                        const enum nvKmsPixelDepth pixelDepth);
+                        const NVHwModeTimingsEvo *pTimings);
 
 NVEvoChannel* nvEvo1AllocateCoreChannel(NVDevEvoRec *pDevEvo);
 void nvEvo1FreeCoreChannel(NVDevEvoRec *pDevEvo, NVEvoChannel *pChannel);

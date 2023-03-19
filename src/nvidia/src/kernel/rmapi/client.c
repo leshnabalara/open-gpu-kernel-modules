@@ -169,7 +169,7 @@ rmclientConstruct_IMPL
         PUID_TOKEN pUidToken = osGetCurrentUidToken();
         UserInfo *pUserInfo = NULL;
 
-        if (RMCFG_FEATURE_PLATFORM_GSP)
+        if (RMCFG_FEATURE_PLATFORM_GSP && IS_VGPU_GSP_PLUGIN_OFFLOAD_ENABLED(pGpu))
         {
             pClient->pSecurityToken = pSecurityToken;
         }

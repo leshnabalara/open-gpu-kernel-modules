@@ -339,6 +339,7 @@ static NV_STATUS _class9074SetNotifierHi
 (
     OBJGPU *pGpu,
     ChannelDescendant *pObject,
+    PMETHOD pMethod,
     NvU32   Offset,
     NvU32   Data
 )
@@ -357,6 +358,7 @@ static NV_STATUS _class9074SetNotifierLo
 (
     OBJGPU *pGpu,
     ChannelDescendant *pObject,
+    PMETHOD pMethod,
     NvU32   Offset,
     NvU32   Data
 )
@@ -392,6 +394,7 @@ static NV_STATUS _class9074SetSemaphoreHi
 (
     OBJGPU *pGpu,
     ChannelDescendant *pObject,
+    PMETHOD pMethod,
     NvU32   Offset,
     NvU32   Data
 )
@@ -410,6 +413,7 @@ static NV_STATUS _class9074SetSemaphoreLo
 (
     OBJGPU *pGpu,
     ChannelDescendant *pObject,
+    PMETHOD pMethod,
     NvU32   Offset,
     NvU32   Data
 )
@@ -445,6 +449,7 @@ static NV_STATUS _class9074SetWaitTimestampHi
 (
     OBJGPU *pGpu,
     ChannelDescendant *pObject,
+    PMETHOD pMethod,
     NvU32   Offset,
     NvU32   Data
 )
@@ -463,6 +468,7 @@ static NV_STATUS _class9074SetWaitTimestampLo
 (
     OBJGPU *pGpu,
     ChannelDescendant *pObject,
+    PMETHOD pMethod,
     NvU32   Offset,
     NvU32   Data
 )
@@ -491,6 +497,7 @@ static NV_STATUS _class9074SetSemaphoreReleaseValue
 (
     OBJGPU *pGpu,
     ChannelDescendant *pObject,
+    PMETHOD pMethod,
     NvU32   Offset,
     NvU32   Data
 )
@@ -509,6 +516,7 @@ static NV_STATUS _class9074ScheduleSemaphoreRelease
 (
     OBJGPU *pGpu,
     ChannelDescendant *pObject,
+    PMETHOD pMethod,
     NvU32   Offset,
     NvU32   Data
 )
@@ -591,7 +599,7 @@ static NV_STATUS _class9074TimerCallback
 } // end of _class9074TimerCallback
 
 // GF100_TIMED_SEMAPHORE_SW
-static const METHOD GF100TimedSemSwMethods[] =
+static METHOD GF100TimedSemSwMethods[] =
 {
     { mthdNoOperation,                    0x0100, 0x0103 },
     { _class9074SetNotifierHi,            0x0140, 0x0143 },
@@ -607,7 +615,7 @@ static const METHOD GF100TimedSemSwMethods[] =
 NV_STATUS tsemaGetSwMethods_IMPL
 (
     TimedSemaSwObject *pTimedSemSw,
-    const METHOD     **ppMethods,
+    METHOD           **ppMethods,
     NvU32             *pNumMethods
 )
 {

@@ -73,39 +73,11 @@ gpuPowerManagementEnter(OBJGPU *pGpu, NvU32 newLevel, NvU32 flags)
     {
         NV_ASSERT_OK_OR_GOTO(status, memmgrSavePowerMgmtState(pGpu, pMemoryManager), done);
 
-        KernelGsp *pKernelGsp = GPU_GET_KERNEL_GSP(pGpu); 
-
-
         NV_RM_RPC_UNLOADING_GUEST_DRIVER(pGpu, status, NV_TRUE, IS_GPU_GC6_STATE_ENTERING(pGpu), newLevel);
         if (status != NV_OK)
             goto done;
 
-        // Wait for GSP-RM to suspend
-        kgspWaitForProcessorSuspend_HAL(pGpu, pKernelGsp);
-
-        // Dump GSP-RM logs before resetting and invoking FWSEC-SB
-        kgspDumpGspLogs(pGpu, pKernelGsp, NV_FALSE);
-
-        // Because of COT, RM cannot reset GSP-RISCV.
-        if (!(pGpu->getProperty(pGpu, PDB_PROP_GPU_IS_COT_ENABLED)))
-        {
-            kflcnReset_HAL(pGpu, staticCast(pKernelGsp, KernelFalcon));
-        }
-
-        // Invoke FWSEC-SB to load back PreOsApps.
-        if (kgspExecuteFwsecSb_HAL(pGpu, pKernelGsp, pKernelGsp->pFwsecUcode) != NV_OK)
-        {
-            NV_PRINTF(LEVEL_ERROR, "failed to execute FWSEC-SB for PreOsApps\n");
-        } 
-
         kpmuFreeLibosLoggingStructures(pGpu, GPU_GET_KERNEL_PMU(pGpu));
-
-        {
-            // Not called when kgspShouldBootWithBooter_HAL() is called and returns NV_FALSE
-            NV_CHECK_OK_OR_GOTO(status, LEVEL_ERROR,
-                                kgspSavePowerMgmtState_HAL(pGpu, pKernelGsp), done);
-
-        }
 
     }
 
@@ -163,6 +135,13 @@ gpuPowerManagementResume(OBJGPU *pGpu, NvU32 oldLevel, NvU32 flags)
 
         KernelGsp *pKernelGsp = GPU_GET_KERNEL_GSP(pGpu); 
 
+        status = kpmuInitLibosLoggingStructures(pGpu, GPU_GET_KERNEL_PMU(pGpu));
+        if (status != NV_OK)
+        {
+            NV_PRINTF(LEVEL_ERROR, "cannot init libOS PMU logging structures: 0x%x\n", status);
+            goto done;
+        }
+
         GSP_SR_INIT_ARGUMENTS gspSrInitArgs;
 
         gspSrInitArgs.oldLevel = oldLevel;
@@ -171,23 +150,18 @@ gpuPowerManagementResume(OBJGPU *pGpu, NvU32 oldLevel, NvU32 flags)
 
         kgspPopulateGspRmInitArgs(pGpu, pKernelGsp, &gspSrInitArgs);
 
-        // Wait for GFW_BOOT status
-        status = kgspWaitForGfwBootOk_HAL(pGpu, pKernelGsp);
+        //
+        // GSP-TODO - Remove following line after the following is implemented
+        // JIRA CORERM-4274 - Open RM - Suspend & Resume - GSP Heap and FW save/restore
+        //
+        // Reset timeout due to long memmgrRestorePowerMgmtState() through BAR0 Window
+        //
+        threadStateResetTimeout(pGpu);
+
+        status = kgspExecuteSequencerCommand_HAL(pGpu, pKernelGsp, GSP_SEQ_BUF_OPCODE_CORE_RESUME, NULL, 0);
         if (status != NV_OK)
         {
-            goto done;
-        }
-
-        // Not called when kgspShouldBootWithBooter_HAL() is called and returns NV_FALSE
-        {
-            NV_CHECK_OK_OR_GOTO(status, LEVEL_ERROR,
-                                kgspRestorePowerMgmtState_HAL(pGpu, pKernelGsp), done);
-        }
-
-        status = kpmuInitLibosLoggingStructures(pGpu, GPU_GET_KERNEL_PMU(pGpu));
-        if (status != NV_OK)
-        {
-            NV_PRINTF(LEVEL_ERROR, "cannot init libOS PMU logging structures: 0x%x\n", status);
+            NV_PRINTF(LEVEL_ERROR, "cannot resume riscv/gsp: 0x%x\n", status);
             goto done;
         }
 
@@ -224,7 +198,7 @@ NV_STATUS
 gpuEnterStandby_IMPL(OBJGPU *pGpu)
 {
     OBJSYS       *pSys    = SYS_GET_INSTANCE();
-    OBJPFM       *pPfm    = SYS_GET_PFM(pSys);
+    POBJPFM       pPfm    = SYS_GET_PFM(pSys);
     NV_STATUS     suspendStatus;
 
     if ((pPfm != NULL) && pPfm->getProperty(pPfm, PDB_PROP_PFM_SUPPORTS_ACPI))
@@ -267,7 +241,7 @@ NV_STATUS
 gpuResumeFromStandby_IMPL(OBJGPU *pGpu)
 {
     OBJSYS    *pSys    = SYS_GET_INSTANCE();
-    OBJPFM    *pPfm    = SYS_GET_PFM(pSys);
+    POBJPFM    pPfm    = SYS_GET_PFM(pSys);
     NV_STATUS  resumeStatus;
     NvU32      state   = 0;
 
@@ -314,7 +288,7 @@ gpuResumeFromStandby_IMPL(OBJGPU *pGpu)
 NV_STATUS gpuEnterHibernate_IMPL(OBJGPU *pGpu)
 {
     OBJSYS    *pSys    = SYS_GET_INSTANCE();
-    OBJPFM    *pPfm    = SYS_GET_PFM(pSys);
+    POBJPFM    pPfm    = SYS_GET_PFM(pSys);
     NV_STATUS  suspendStatus;
 
     if ((pPfm != NULL) && pPfm->getProperty(pPfm, PDB_PROP_PFM_SUPPORTS_ACPI))
@@ -347,7 +321,7 @@ NV_STATUS gpuEnterHibernate_IMPL(OBJGPU *pGpu)
 NV_STATUS gpuResumeFromHibernate_IMPL(OBJGPU *pGpu)
 {
     OBJSYS    *pSys   = SYS_GET_INSTANCE();
-    OBJPFM    *pPfm   = SYS_GET_PFM(pSys);
+    POBJPFM    pPfm   = SYS_GET_PFM(pSys);
     NV_STATUS  resumeStatus;
 
     NV_PRINTF(LEVEL_INFO,

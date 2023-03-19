@@ -1930,7 +1930,13 @@ struct NvKmsSetModeOneHeadReply {
      */
     enum NvKmsSetModeOneHeadStatus status;
 
-    NvU32 hwHead;
+    /*!
+     * The identifier that we use to talk to RM about the display
+     * device(s) driven by this head.  For DP MST, it is the identifier
+     * of the DisplayPort library group to which the MST device belongs.
+     * Otherwise, it is the identifier of the connector.
+     */
+    NvU32 activeRmId;
 
     /*!
      * The usage bounds that may be possible on this head based on the ISO
@@ -2114,25 +2120,24 @@ struct NvKmsIdleBaseChannelParams {
 /*!
  * NVKMS_IOCTL_FLIP: Flip one or more heads on the subdevices of a device.
  *
- * At least one head must be specified in a flip request, and at most
- * NV_MAX_FLIP_REQUEST_HEADS may be specified.
+ * At least one head on one subdevice must be specified in a flip request.
  */
 
-struct NvKmsFlipRequestOneHead {
-    NvU32 sd;
-    NvU32 head;
-    struct NvKmsFlipCommonParams flip;
+struct NvKmsFlipRequestOneSubDevice {
+    /*!
+     * The bit mask of which head[] elements to look at on this disp.
+     */
+    NvU32 requestedHeadsBitMask;
+    struct NvKmsFlipCommonParams head[NVKMS_MAX_HEADS_PER_DISP];
 };
-
-#define NV_MAX_FLIP_REQUEST_HEADS (NV_MAX_SUBDEVICES * NV_MAX_HEADS)
 
 struct NvKmsFlipRequest {
     NvKmsDeviceHandle deviceHandle;
 
-    /* Pointer to an array of length 'numFlipHeads'; each entry in the array is
-     * of type 'struct NvKmsFlipRequestOneHead'. */
-    NvU64 pFlipHead NV_ALIGN_BYTES(8);
-    NvU32 numFlipHeads;
+    /*
+     * sd[n] corresponds to bit N in NvKmsAllocDeviceReply::subDeviceMask.
+     */
+    struct NvKmsFlipRequestOneSubDevice sd[NVKMS_MAX_SUBDEVICES];
 
     /*!
      * When a flip request is made, NVKMS will first perform
@@ -2161,6 +2166,10 @@ enum NvKmsVrrFlipType {
     NV_KMS_VRR_FLIP_ADAPTIVE_SYNC,
 };
 
+struct NvKmsFlipReplyOneSubDevice {
+    struct NvKmsFlipCommonReplyOneHead head[NVKMS_MAX_HEADS_PER_DISP];
+};
+
 struct NvKmsFlipReply {
     /*!
      * If vrrFlipType != NV_KMS_VRR_FLIP_NON_VRR, then VRR was used for the
@@ -2180,10 +2189,9 @@ struct NvKmsFlipReply {
     enum NvKmsVrrFlipType vrrFlipType;
 
     /*!
-     * Entries correspond to the heads specified in
-     * NvKmsFlipRequest::pFlipHead, in the same order.
+     * sd[n] corresponds to bit N in NvKmsAllocDeviceReply::subDeviceMask.
      */
-    struct NvKmsFlipCommonReplyOneHead flipHead[NV_MAX_FLIP_REQUEST_HEADS];
+    struct NvKmsFlipReplyOneSubDevice sd[NVKMS_MAX_SUBDEVICES];
 };
 
 struct NvKmsFlipParams {
@@ -2512,7 +2520,6 @@ enum NvKmsAttributeType {
 enum NvKmsDpyAttribute {
     NV_KMS_DPY_ATTRIBUTE_BACKLIGHT_BRIGHTNESS = 0,
     NV_KMS_DPY_ATTRIBUTE_SCANLINE,
-    NV_KMS_DPY_ATTRIBUTE_HW_HEAD,
     NV_KMS_DPY_ATTRIBUTE_HEAD,
     NV_KMS_DPY_ATTRIBUTE_REQUESTED_DITHERING,
     NV_KMS_DPY_ATTRIBUTE_REQUESTED_DITHERING_MODE,
@@ -2596,6 +2603,7 @@ enum NvKmsDpyAttributeCurrentColorSpaceValue {
     NV_KMS_DPY_ATTRIBUTE_CURRENT_COLOR_SPACE_YCbCr422 = 1,
     NV_KMS_DPY_ATTRIBUTE_CURRENT_COLOR_SPACE_YCbCr444 = 2,
     NV_KMS_DPY_ATTRIBUTE_CURRENT_COLOR_SPACE_YCbCr420 = 3,
+    NV_KMS_DPY_ATTRIBUTE_CURRENT_COLOR_SPACE_BT2020RGB = 4,
 };
 
 /*! Values for the NV_KMS_DPY_ATTRIBUTE_DIGITAL_SIGNAL attribute. */
@@ -3235,10 +3243,13 @@ struct NvKmsReleaseOwnershipParams {
  *   permissions.
  *
  * - The modeset owner can optionally revoke any previously granted
- *   permissions with NVKMS_IOCTL_REVOKE_PERMISSIONS. This can be 
- *   device-scope for all of a type, or just a set of permissions.
+ *   permissions with NVKMS_IOCTL_REVOKE_PERMISSIONS.
  *
  * Notes:
+ *
+ * - NVKMS_IOCTL_REVOKE_PERMISSIONS has device-scope.  It could be
+ *   made finer-grained (e.g., take the file descriptor that was used
+ *   to grant permissions) if that were needed.
  *
  * - NvKmsPermissions::disp[n] corresponds to the disp named by
  *   NvKmsAllocDeviceReply::dispHandles[n].
@@ -3346,15 +3357,10 @@ struct NvKmsRevokePermissionsRequest {
 
     /*
      * A bitmask of permission types to be revoked for this device.
-     * It should be the bitwise 'or' of any number of
+     * It should be the bitwise 'or' of one or more
      * NVBIT(NV_KMS_PERMISSIONS_TYPE_*) values.
      */
     NvU32 permissionsTypeBitmask;
-
-    /*
-     * If permissionsTypeBitmask is 0, instead revoke only these permissions.
-     */
-    struct NvKmsPermissions permissions;
 };
 
 struct NvKmsRevokePermissionsReply {

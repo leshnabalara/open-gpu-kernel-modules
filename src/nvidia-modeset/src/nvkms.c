@@ -36,7 +36,6 @@
 #include "nvkms-modepool.h"
 #include "nvkms-modeset.h"
 #include "nvkms-attributes.h"
-#include "nvkms-dpy-override.h"
 #include "nvkms-framelock.h"
 #include "nvkms-surface.h"
 #include "nvkms-3dvision.h"
@@ -44,7 +43,6 @@
 #include "nvkms-headsurface.h"
 #include "nvkms-headsurface-ioctl.h"
 #include "nvkms-headsurface-swapgroup.h"
-#include "nvkms-flip.h" /* nvFlipEvo */
 #include "nvkms-vrr.h"
 
 #include "dp/nvdp-connector.h"
@@ -211,7 +209,7 @@ struct NvKmsPerOpen {
                 struct {
                     NvKmsGenericHandle       hCallback;
                     struct NvKmsPerOpenDisp *pOpenDisp;
-                    NvU32                    apiHead;
+                    NvU32                    head;
                 } vblankNotification;
             } e;
         } unicastEvent;
@@ -820,7 +818,7 @@ static NvBool ValidateNvKmsPermissions(
                     continue;
                 }
 
-                if (nvHasBitAboveMax(layerMask, pDevEvo->apiHead[h].numLayers)) {
+                if (nvHasBitAboveMax(layerMask, pDevEvo->head[h].numLayers)) {
                     return FALSE;
                 }
 
@@ -834,7 +832,7 @@ static NvBool ValidateNvKmsPermissions(
                     return FALSE;
                 }
 
-                if (h >= pDevEvo->numApiHeads) {
+                if (h >= pDevEvo->numHeads) {
                     return FALSE;
                 }
             }
@@ -862,7 +860,7 @@ static NvBool ValidateNvKmsPermissions(
                     return FALSE;
                 }
 
-                if (h >= pDevEvo->numApiHeads) {
+                if (h >= pDevEvo->numHeads) {
                     return FALSE;
                 }
             }
@@ -882,14 +880,14 @@ static void AssignFullNvKmsFlipPermissions(
     const NVDevEvoRec *pDevEvo,
     struct NvKmsFlipPermissions *pPermissions)
 {
-    NvU32 dispIndex, apiHead;
+    NvU32 dispIndex, head;
 
     nvkms_memset(pPermissions, 0, sizeof(*pPermissions));
 
     for (dispIndex = 0; dispIndex < pDevEvo->nDispEvo; dispIndex++) {
-        for (apiHead = 0; apiHead < pDevEvo->numApiHeads; apiHead++) {
-            pPermissions->disp[dispIndex].head[apiHead].layerMask =
-                NVBIT(pDevEvo->apiHead[apiHead].numLayers) - 1;
+        for (head = 0; head < pDevEvo->numHeads; head++) {
+            pPermissions->disp[dispIndex].head[head].layerMask =
+                NVBIT(pDevEvo->head[head].numLayers) - 1;
         }
     }
 }
@@ -898,13 +896,13 @@ static void AssignFullNvKmsModesetPermissions(
     const NVDevEvoRec *pDevEvo,
     struct NvKmsModesetPermissions *pPermissions)
 {
-    NvU32 dispIndex, apiHead;
+    NvU32 dispIndex, head;
 
     nvkms_memset(pPermissions, 0, sizeof(*pPermissions));
 
     for (dispIndex = 0; dispIndex < pDevEvo->nDispEvo; dispIndex++) {
-        for (apiHead = 0; apiHead < pDevEvo->numApiHeads; apiHead++) {
-            pPermissions->disp[dispIndex].head[apiHead].dpyIdList =
+        for (head = 0; head < pDevEvo->numHeads; head++) {
+            pPermissions->disp[dispIndex].head[head].dpyIdList =
                 nvAllDpyIdList();
         }
     }
@@ -945,61 +943,6 @@ static NvBool GrabModesetOwnership(struct NvKmsPerOpenDev *pOpenDev)
     return TRUE;
 }
 
-/*
- * If not NULL, remove pRemoveFlip from pFlip. Returns true if there are still
- * some remaining permissions.
- */
-static NvBool RemoveFlipPermissions(struct NvKmsFlipPermissions *pFlip,
-                                    const struct NvKmsFlipPermissions *pRemoveFlip)
-{
-    NvU32 d, h, dLen, hLen;
-    NvBool remainingPermissions = FALSE;
-
-    dLen = ARRAY_LEN(pFlip->disp);
-    for (d = 0; d < dLen; d++) {
-        hLen = ARRAY_LEN(pFlip->disp[d].head);
-        for (h = 0; h < hLen; h++) {
-
-            if (pRemoveFlip) {
-                pFlip->disp[d].head[h].layerMask &=
-                    ~pRemoveFlip->disp[d].head[h].layerMask;
-            }
-
-            remainingPermissions |= (pFlip->disp[d].head[h].layerMask != 0);
-        }
-    }
-
-    return remainingPermissions;
-}
-
-/*
- * If not NULL, remove pRemoveModeset from pModeset. Returns true if there are
- * still some remaining permissions.
- */
-static NvBool RemoveModesetPermissions(struct NvKmsModesetPermissions *pModeset,
-                                       const struct NvKmsModesetPermissions *pRemoveModeset)
-{
-    NvU32 d, h, dLen, hLen;
-    NvBool remainingPermissions = FALSE;
-
-    dLen = ARRAY_LEN(pModeset->disp);
-    for (d = 0; d < dLen; d++) {
-        hLen = ARRAY_LEN(pModeset->disp[d].head);
-        for (h = 0; h < hLen; h++) {
-
-            if (pRemoveModeset) {
-                pModeset->disp[d].head[h].dpyIdList = nvDpyIdListMinusDpyIdList(
-                    pModeset->disp[d].head[h].dpyIdList,
-                    pRemoveModeset->disp[d].head[h].dpyIdList);
-            }
-
-            remainingPermissions |=
-                !nvDpyIdListIsEmpty(pModeset->disp[d].head[h].dpyIdList);
-        }
-    }
-
-    return remainingPermissions;
-}
 
 /*!
  * Clear permissions on the specified device for all NvKmsPerOpens.
@@ -1311,7 +1254,7 @@ static NvBool AllocDevice(struct NvKmsPerOpen *pOpen,
     struct NvKmsAllocDeviceParams *pParams = pParamsVoid;
     NVDevEvoPtr pDevEvo;
     struct NvKmsPerOpenDev *pOpenDev;
-    NvU32 disp, apiHead;
+    NvU32 disp, head;
     NvU8 layer;
 
     nvkms_memset(&pParams->reply, 0, sizeof(pParams->reply));
@@ -1369,7 +1312,7 @@ static NvBool AllocDevice(struct NvKmsPerOpen *pOpen,
     pParams->reply.deviceHandle = pOpenDev->nvKmsApiHandle;
     pParams->reply.subDeviceMask =
         NV_TWO_N_MINUS_ONE(pDevEvo->numSubDevices);
-    pParams->reply.numHeads = pDevEvo->numApiHeads;
+    pParams->reply.numHeads = pDevEvo->numHeads;
     pParams->reply.numDisps = pDevEvo->nDispEvo;
 
     ct_assert(ARRAY_LEN(pParams->reply.dispHandles) ==
@@ -1384,8 +1327,8 @@ static NvBool AllocDevice(struct NvKmsPerOpen *pOpen,
     ct_assert(ARRAY_LEN(pParams->reply.layerCaps) ==
               ARRAY_LEN(pDevEvo->caps.layerCaps));
 
-    for (apiHead = 0; apiHead < pDevEvo->numApiHeads; apiHead++) {
-        pParams->reply.numLayers[apiHead] = pDevEvo->apiHead[apiHead].numLayers;
+    for (head = 0; head < pDevEvo->numHeads; head++) {
+        pParams->reply.numLayers[head] = pDevEvo->head[head].numLayers;
     }
 
     for (layer = 0;
@@ -1463,7 +1406,7 @@ static void UnregisterDeferredRequestFifos(struct NvKmsPerOpenDev *pOpenDev)
  * DisableRemainingVblankSyncObjects().
  */
 static void DisableAndCleanVblankSyncObject(struct NvKmsPerOpenDisp *pOpenDisp,
-                                            NvU32 apiHead,
+                                            NvU32 head,
                                             NVVblankSyncObjectRec *pVblankSyncObject,
                                             NVEvoUpdateState *pUpdateState,
                                             NvKmsVblankSyncObjectHandle handle);
@@ -1475,7 +1418,7 @@ static void DisableRemainingVblankSyncObjects(struct NvKmsPerOpen *pOpen,
     NvKmsGenericHandle disp;
     NVVblankSyncObjectRec *pVblankSyncObject;
     NvKmsVblankSyncObjectHandle handle;
-    NvU32 apiHead = 0;
+    NvU32 head = 0;
 
     nvAssert(pOpen->type == NvKmsPerOpenTypeIoctl);
 
@@ -1493,14 +1436,14 @@ static void DisableRemainingVblankSyncObjects(struct NvKmsPerOpen *pOpen,
         NVEvoUpdateState updateState = { };
 
         /* For each head: */
-        for (apiHead = 0; apiHead < ARRAY_LEN(pOpenDisp->vblankSyncObjectHandles); apiHead++) {
+        for (head = 0; head < ARRAY_LEN(pOpenDisp->vblankSyncObjectHandles); head++) {
             NVEvoApiHandlesRec *pHandles =
-                &pOpenDisp->vblankSyncObjectHandles[apiHead];
+                &pOpenDisp->vblankSyncObjectHandles[head];
 
             /* For each still-active vblank sync object: */
             FOR_ALL_POINTERS_IN_EVO_API_HANDLES(pHandles,
                                                 pVblankSyncObject, handle) {
-                DisableAndCleanVblankSyncObject(pOpenDisp, apiHead,
+                DisableAndCleanVblankSyncObject(pOpenDisp, head,
                                                 pVblankSyncObject,
                                                 &updateState,
                                                 handle);
@@ -1656,7 +1599,7 @@ static NvBool QueryConnectorStaticData(struct NvKmsPerOpen *pOpen,
     pParams->reply.signalFormat     = pConnectorEvo->signalFormat;
     pParams->reply.physicalIndex    = pConnectorEvo->physicalIndex;
     pParams->reply.physicalLocation = pConnectorEvo->physicalLocation;
-    pParams->reply.headMask         = pConnectorEvo->validApiHeadMask;
+    pParams->reply.headMask         = pConnectorEvo->validHeadMask;
 
     pParams->reply.isLvds =
         (pConnectorEvo->or.type == NV0073_CTRL_SPECIFIC_OR_TYPE_SOR) &&
@@ -2053,20 +1996,20 @@ static NvBool SetModePrepUser(
 {
     struct NvKmsSetModeParams *pParams = pParamsVoid;
     struct NvKmsSetModeRequest *pReq = &pParams->request;
-    NvU32 disp, apiHead, dispFailed, apiHeadFailed;
+    NvU32 disp, head, dispFailed, headFailed;
 
     /* Iterate over all of the common LUT ramp pointers embedded in the SetMode
      * request, and copy in each one. */
     for (disp = 0; disp < ARRAY_LEN(pReq->disp); disp++) {
-        for (apiHead = 0; apiHead < ARRAY_LEN(pReq->disp[disp].head); apiHead++) {
+        for (head = 0; head < ARRAY_LEN(pReq->disp[disp].head); head++) {
             struct NvKmsSetLutCommonParams *pCommonLutParams =
-                &pReq->disp[disp].head[apiHead].lut;
+                &pReq->disp[disp].head[head].lut;
 
             if (!CopyInLutParams(pCommonLutParams)) {
                 /* Remember how far we got through these loops before we
                  * failed, so that we can undo everything up to this point. */
                 dispFailed = disp;
-                apiHeadFailed = apiHead;
+                headFailed = head;
                 goto fail;
             }
         }
@@ -2076,12 +2019,12 @@ static NvBool SetModePrepUser(
 
 fail:
     for (disp = 0; disp < ARRAY_LEN(pReq->disp); disp++) {
-        for (apiHead = 0; apiHead < ARRAY_LEN(pReq->disp[disp].head); apiHead++) {
+        for (head = 0; head < ARRAY_LEN(pReq->disp[disp].head); head++) {
             struct NvKmsSetLutCommonParams *pCommonLutParams =
-                &pReq->disp[disp].head[apiHead].lut;
+                &pReq->disp[disp].head[head].lut;
 
             if (disp > dispFailed ||
-                (disp == dispFailed && apiHead >= apiHeadFailed)) {
+                (disp == dispFailed && head >= headFailed)) {
                 break;
             }
 
@@ -2101,12 +2044,12 @@ static NvBool SetModeDoneUser(
 {
     struct NvKmsSetModeParams *pParams = pParamsVoid;
     struct NvKmsSetModeRequest *pReq = &pParams->request;
-    NvU32 disp, apiHead;
+    NvU32 disp, head;
 
     for (disp = 0; disp < ARRAY_LEN(pReq->disp); disp++) {
-        for (apiHead = 0; apiHead < ARRAY_LEN(pReq->disp[disp].head); apiHead++) {
+        for (head = 0; head < ARRAY_LEN(pReq->disp[disp].head); head++) {
             struct NvKmsSetLutCommonParams *pCommonLutParams =
-                &pReq->disp[disp].head[apiHead].lut;
+                &pReq->disp[disp].head[head].lut;
 
             FreeCopiedInLutParams(pCommonLutParams);
         }
@@ -2157,7 +2100,7 @@ static NvBool SetCursorImage(struct NvKmsPerOpen *pOpen,
 
     pDispEvo = pOpenDisp->pDispEvo;
 
-    if (!nvApiHeadIsActive(pDispEvo, pParams->request.head)) {
+    if (!nvHeadIsActive(pDispEvo, pParams->request.head)) {
         return FALSE;
     }
 
@@ -2187,7 +2130,7 @@ static NvBool MoveCursor(struct NvKmsPerOpen *pOpen,
 
     pDispEvo = pOpenDisp->pDispEvo;
 
-    if (!nvApiHeadIsActive(pDispEvo, pParams->request.head)) {
+    if (!nvHeadIsActive(pDispEvo, pParams->request.head)) {
         return FALSE;
     }
 
@@ -2251,7 +2194,7 @@ static NvBool SetLut(struct NvKmsPerOpen *pOpen,
 
     pDispEvo = pOpenDisp->pDispEvo;
 
-    if (!nvApiHeadIsActive(pDispEvo, pParams->request.head)) {
+    if (!nvHeadIsActive(pDispEvo, pParams->request.head)) {
         return FALSE;
     }
 
@@ -2271,15 +2214,28 @@ static NvBool SetLut(struct NvKmsPerOpen *pOpen,
 /*!
  * Return whether the specified head is idle.
  */
-static NvBool IdleMainLayerChannelCheckIdleOneApiHead(
+static NvBool IdleBaseChannelCheckIdleOneHead(
     NVDispEvoPtr pDispEvo,
-    NvU32 apiHead)
+    NvU32 head)
 {
-    if (pDispEvo->pHsChannel[apiHead] != NULL) {
-        return nvHsIdleFlipQueue(pDispEvo->pHsChannel[apiHead],
-                                 FALSE /* force */);
+    NVDevEvoPtr pDevEvo = pDispEvo->pDevEvo;
+
+    const NvU32 apiHead = nvHardwareHeadToApiHead(head);
+    NVHsChannelEvoPtr pHsChannel = pDispEvo->pHsChannel[apiHead];
+
+    if (pHsChannel != NULL) {
+        return nvHsIdleFlipQueue(pHsChannel, FALSE /* force */);
+    } else
+    {
+        NVEvoChannelPtr pMainLayerChannel =
+            pDevEvo->head[head].layer[NVKMS_MAIN_LAYER];
+        NvBool isMethodPending = FALSE;
+        NvBool ret;
+
+        ret = pDevEvo->hal->IsChannelMethodPending(pDevEvo, pMainLayerChannel,
+                                                   pDispEvo->displayOwner, &isMethodPending);
+        return !ret || !isMethodPending;
     }
-    return nvIdleMainLayerChannelCheckIdleOneApiHead(pDispEvo, apiHead);
 }
 
 /*!
@@ -2295,28 +2251,28 @@ static NvBool IdleBaseChannelCheckIdle(
     const struct NvKmsIdleBaseChannelRequest *pRequest,
     struct NvKmsIdleBaseChannelReply *pReply)
 {
-    NvU32 apiHead, sd;
+    NvU32 head, sd;
     NVDispEvoPtr pDispEvo;
     NvBool allIdle = TRUE;
 
     FOR_ALL_EVO_DISPLAYS(pDispEvo, sd, pDevEvo) {
 
-        for (apiHead = 0; apiHead < pDevEvo->numApiHeads; apiHead++) {
+        for (head = 0; head < pDevEvo->numHeads; head++) {
 
             NvBool idle;
 
-            if (!nvApiHeadIsActive(pDispEvo, apiHead)) {
+            if (!nvHeadIsActive(pDispEvo, head)) {
                 continue;
             }
 
-            if ((pRequest->subDevicesPerHead[apiHead] & NVBIT(sd)) == 0) {
+            if ((pRequest->subDevicesPerHead[head] & NVBIT(sd)) == 0) {
                 continue;
             }
 
-            idle = IdleMainLayerChannelCheckIdleOneApiHead(pDispEvo, apiHead);
+            idle = IdleBaseChannelCheckIdleOneHead(pDispEvo, head);
 
             if (!idle) {
-                pReply->stopSubDevicesPerHead[apiHead] |= NVBIT(sd);
+                pReply->stopSubDevicesPerHead[head] |= NVBIT(sd);
             }
             allIdle = allIdle && idle;
         }
@@ -2402,96 +2358,6 @@ static NvBool IdleBaseChannel(struct NvKmsPerOpen *pOpen,
 }
 
 
-struct NvKmsFlipExtraUserState
-{
-    // Nothing needed.
-};
-
-static NvBool FlipPrepUser(
-    void *pParamsVoid,
-    void *pExtraUserStateVoid)
-{
-    struct NvKmsFlipParams *pParams = pParamsVoid;
-    struct NvKmsFlipRequest *pRequest = &pParams->request;
-    struct NvKmsFlipRequestOneHead *pFlipHeadKernel = NULL;
-    NvU64 pFlipHeadUser = pRequest->pFlipHead;
-    size_t size;
-    int status;
-
-    if (!nvKmsNvU64AddressIsSafe(pFlipHeadUser)) {
-        return FALSE;
-    }
-
-    if (pRequest->numFlipHeads <= 0 ||
-        pRequest->numFlipHeads > NV_MAX_FLIP_REQUEST_HEADS) {
-        return FALSE;
-    }
-
-    size = sizeof(*pFlipHeadKernel) * pRequest->numFlipHeads;
-    pFlipHeadKernel = nvAlloc(size);
-    if (!pFlipHeadKernel) {
-        return FALSE;
-    }
-
-    status = nvkms_copyin((char *)pFlipHeadKernel, pFlipHeadUser, size);
-    if (status != 0) {
-        nvFree(pFlipHeadKernel);
-        return FALSE;
-    }
-
-    pRequest->pFlipHead = nvKmsPointerToNvU64(pFlipHeadKernel);
-
-    return TRUE;
-}
-
-static NvBool FlipDoneUser(
-    void *pParamsVoid,
-    void *pExtraUserStateVoid)
-{
-    struct NvKmsFlipParams *pParams = pParamsVoid;
-    struct NvKmsFlipRequest *pRequest = &pParams->request;
-
-    nvFree(nvKmsNvU64ToPointer(pRequest->pFlipHead));
-    /* The request is not copied back out to userspace (only the reply is), so
-     * we don't need to worry about restoring the user pointer */
-    pRequest->pFlipHead = 0;
-
-    return TRUE;
-}
-
-/*!
- * For each entry in the array pointed to by 'pFlipHead', of length
- * 'numFlipHeads', verify that the sd and head values specified are within
- * bounds and that there are no duplicates.
- */
-static NvBool ValidateFlipHeads(
-    NVDevEvoPtr pDevEvo,
-    const struct NvKmsFlipRequestOneHead *pFlipHead,
-    NvU32 numFlipHeads)
-{
-    NvU32 i;
-    ct_assert(NVKMS_MAX_HEADS_PER_DISP <= 8);
-    NvU8 apiHeadsUsed[NVKMS_MAX_SUBDEVICES] = { };
-
-    for (i = 0; i < numFlipHeads; i++) {
-        const NvU32 sd = pFlipHead[i].sd;
-        const NvU32 apiHead = pFlipHead[i].head;
-
-        if (sd >= pDevEvo->numSubDevices) {
-            return FALSE;
-        }
-        if (apiHead >= pDevEvo->numApiHeads) {
-            return FALSE;
-        }
-        if ((apiHeadsUsed[sd] & (1 << apiHead)) != 0) {
-            return FALSE;
-        }
-        apiHeadsUsed[sd] |= (1 << apiHead);
-    }
-
-    return TRUE;
-}
-
 /*!
  * Flip the specified head.
  */
@@ -2500,11 +2366,6 @@ static NvBool Flip(struct NvKmsPerOpen *pOpen,
 {
     struct NvKmsFlipParams *pParams = pParamsVoid;
     struct NvKmsPerOpenDev *pOpenDev;
-    NVDevEvoPtr pDevEvo = NULL;
-    const struct NvKmsFlipRequest *pRequest = &pParams->request;
-    const struct NvKmsFlipRequestOneHead *pFlipHead =
-        nvKmsNvU64ToPointer(pRequest->pFlipHead);
-    const NvU32 numFlipHeads = pRequest->numFlipHeads;
 
     pOpenDev = GetPerOpenDev(pOpen, pParams->request.deviceHandle);
 
@@ -2512,16 +2373,8 @@ static NvBool Flip(struct NvKmsPerOpen *pOpen,
         return FALSE;
     }
 
-    pDevEvo = pOpenDev->pDevEvo;
-
-    if (!ValidateFlipHeads(pDevEvo, pFlipHead, numFlipHeads)) {
-        return FALSE;
-    }
-
-    return nvHsIoctlFlip(pDevEvo, pOpenDev,
-                         pFlipHead, numFlipHeads,
-                         pRequest->commit, pRequest->allowVrr,
-                         &pParams->reply);
+    return nvHsIoctlFlip(pOpenDev->pDevEvo, pOpenDev,
+                         &pParams->request, &pParams->reply);
 }
 
 
@@ -3338,86 +3191,6 @@ static NvBool AcquirePermissions(struct NvKmsPerOpen *pOpen, void *pParamsVoid)
     return TRUE;
 }
 
-/*!
- * Clear the set of permissions from pRevokingOpenDev.
- *
- * For NvKmsPerOpen::type==Ioctl, clear from permissions. It doesn't clear
- * itself or privileged.
- *
- * For NvKmsPerOpen::type==GrantPermissions, clear from
- * NvKmsPerOpen::grantPermissions, and reset NvKmsPerOpen::type to Undefined
- * if it is empty.
- */
-static NvBool RevokePermissionsSet(
-    struct NvKmsPerOpenDev *pRevokingOpenDev,
-    const struct NvKmsPermissions *pRevokingPermissions)
-{
-    const NVDevEvoRec *pDevEvo;
-    struct NvKmsPerOpen *pOpen;
-    const struct NvKmsFlipPermissions *pRemoveFlip;
-    const struct NvKmsModesetPermissions *pRemoveModeset;
-
-    // Only process valid permissions.
-    if (pRevokingPermissions->type != NV_KMS_PERMISSIONS_TYPE_FLIPPING &&
-        pRevokingPermissions->type != NV_KMS_PERMISSIONS_TYPE_MODESET) {
-        return FALSE;
-    }
-
-    pDevEvo = pRevokingOpenDev->pDevEvo;
-    pRemoveFlip =
-        (pRevokingPermissions->type == NV_KMS_PERMISSIONS_TYPE_FLIPPING)
-            ? &pRevokingPermissions->flip
-            : NULL;
-    pRemoveModeset =
-        (pRevokingPermissions->type == NV_KMS_PERMISSIONS_TYPE_MODESET)
-            ? &pRevokingPermissions->modeset
-            : NULL;
-
-    nvListForEachEntry(pOpen, &perOpenList, perOpenListEntry) {
-        if ((pOpen->type == NvKmsPerOpenTypeGrantPermissions) &&
-            (pOpen->grantPermissions.pDevEvo == pDevEvo)) {
-            NvBool remainingPermissions = FALSE;
-            struct NvKmsPermissions *pFdPermissions =
-                &pOpen->grantPermissions.permissions;
-
-            if (pFdPermissions->type == NV_KMS_PERMISSIONS_TYPE_FLIPPING) {
-                remainingPermissions =
-                    RemoveFlipPermissions(&pFdPermissions->flip, pRemoveFlip);
-            } else {
-                remainingPermissions = RemoveModesetPermissions(
-                    &pFdPermissions->modeset, pRemoveModeset);
-            }
-
-            // Reset if it is empty.
-            if (!remainingPermissions) {
-                nvkms_memset(&pOpen->grantPermissions, 0,
-                            sizeof(pOpen->grantPermissions));
-                pOpen->type = NvKmsPerOpenTypeUndefined;
-            }
-
-        } else if (pOpen->type == NvKmsPerOpenTypeIoctl) {
-
-            struct NvKmsPerOpenDev *pOpenDev = DevEvoToOpenDev(pOpen, pDevEvo);
-            if (pOpenDev == NULL) {
-                continue;
-            }
-
-            if (pOpenDev == pRevokingOpenDev || pOpenDev->isPrivileged) {
-                continue;
-            }
-
-            if (pRevokingPermissions->type == NV_KMS_PERMISSIONS_TYPE_FLIPPING) {
-                RemoveFlipPermissions(&pOpenDev->flipPermissions, pRemoveFlip);
-            } else {
-                RemoveModesetPermissions(&pOpenDev->modesetPermissions,
-                                        pRemoveModeset);
-            }
-        }
-    }
-
-    return TRUE;
-}
-
 static NvBool RevokePermissions(struct NvKmsPerOpen *pOpen, void *pParamsVoid)
 {
     struct NvKmsRevokePermissionsParams *pParams = pParamsVoid;
@@ -3442,18 +3215,11 @@ static NvBool RevokePermissions(struct NvKmsPerOpen *pOpen, void *pParamsVoid)
         return FALSE;
     }
 
-    if (pParams->request.permissionsTypeBitmask > 0) {
-        // Old behavior, revoke all permissions of a type.
+    /* Revoke permissions for everyone except the caller. */
 
-        /* Revoke permissions for everyone except the caller. */
-        RevokePermissionsInternal(pParams->request.permissionsTypeBitmask,
-                                  pOpenDev->pDevEvo,
-                                  pOpenDev /* pOpenDevExclude */);
-    } else {
-        /* If not using bitmask, revoke using the set. */
-        return RevokePermissionsSet(pOpenDev, &pParams->request.permissions);
-    }
-
+    RevokePermissionsInternal(pParams->request.permissionsTypeBitmask,
+                              pOpenDev->pDevEvo,
+                              pOpenDev /* pOpenDevExclude */);
     return TRUE;
 }
 
@@ -3575,7 +3341,7 @@ static NvBool QueryDpyCRC32(struct NvKmsPerOpen *pOpen,
 
     pDispEvo = pOpenDisp->pDispEvo;
 
-    if (!nvApiHeadIsActive(pDispEvo, pParams->request.head)) {
+    if (!nvHeadIsActive(pDispEvo, pParams->request.head)) {
         return FALSE;
     }
 
@@ -3586,18 +3352,8 @@ static NvBool QueryDpyCRC32(struct NvKmsPerOpen *pOpen,
     crcOut.compositorCrc32 = &(pParams->reply.compositorCrc32);
     crcOut.outputCrc32 = &(pParams->reply.outputCrc32);
 
-    {
-        /*
-         * XXX[2Heads1OR] Is it sufficient to query CRC only for the primary
-         * hardware head?
-         */
-        NvU32 head = nvGetPrimaryHwHead(pDispEvo, pParams->request.head);
-
-        nvAssert(head != NV_INVALID_HEAD);
-
-        if (!nvReadCRC32Evo(pDispEvo, head, &crcOut)) {
-            return FALSE;
-        }
+    if (!nvReadCRC32Evo(pDispEvo, pParams->request.head, &crcOut)) {
+        return FALSE;
     }
 
     return TRUE;
@@ -4062,11 +3818,11 @@ static NvBool EnableVblankSyncObject(
 {
     struct NvKmsEnableVblankSyncObjectParams *pParams = pParamsVoid;
     struct NvKmsPerOpenDisp* pOpenDisp = NULL;
-    NVDispApiHeadStateEvoRec *pApiHeadState = NULL;
+    NVDispHeadStateEvoRec *pHeadState = NULL;
     NVDevEvoPtr pDevEvo = NULL;
     NvKmsVblankSyncObjectHandle vblankHandle = 0;
     int freeVblankSyncObjectIdx = 0;
-    NvU32 apiHead = pParams->request.head;
+    NvU32 head = pParams->request.head;
     NVVblankSyncObjectRec *vblankSyncObjects = NULL;
     NVDispEvoPtr pDispEvo = NULL;
     NVEvoUpdateState updateState = { };
@@ -4091,12 +3847,12 @@ static NvBool EnableVblankSyncObject(
     }
 
     /* Validate requested head because it comes from user input. */
-    if (apiHead >= ARRAY_LEN(pDispEvo->apiHeadState)) {
-        nvEvoLogDebug(EVO_LOG_ERROR, "Invalid head requested, head=%d.", apiHead);
+    if (head >= ARRAY_LEN(pDispEvo->headState)) {
+        nvEvoLogDebug(EVO_LOG_ERROR, "Invalid head requested, head=%d.", head);
         return FALSE;
     }
-    pApiHeadState = &pDispEvo->apiHeadState[apiHead];
-    vblankSyncObjects = pApiHeadState->vblankSyncObjects;
+    pHeadState = &pDispEvo->headState[head];
+    vblankSyncObjects = pHeadState->vblankSyncObjects;
     pDevEvo = pDispEvo->pDevEvo;
 
     /*
@@ -4104,37 +3860,33 @@ static NvBool EnableVblankSyncObject(
      * use.
      */
     for (freeVblankSyncObjectIdx = 0;
-         freeVblankSyncObjectIdx < pApiHeadState->numVblankSyncObjectsCreated;
+         freeVblankSyncObjectIdx < pHeadState->numVblankSyncObjectsCreated;
          freeVblankSyncObjectIdx++) {
         if (!vblankSyncObjects[freeVblankSyncObjectIdx].inUse) {
             break;
         }
     }
-    if (freeVblankSyncObjectIdx == pApiHeadState->numVblankSyncObjectsCreated) {
+    if (freeVblankSyncObjectIdx == pHeadState->numVblankSyncObjectsCreated) {
         return FALSE;
     }
 
     /* Save the created vblank handle if it is valid. */
     vblankHandle =
-        nvEvoCreateApiHandle(&pOpenDisp->vblankSyncObjectHandles[apiHead],
+        nvEvoCreateApiHandle(&pOpenDisp->vblankSyncObjectHandles[head],
                              &vblankSyncObjects[freeVblankSyncObjectIdx]);
     if (vblankHandle == 0) {
         nvEvoLogDebug(EVO_LOG_ERROR, "Unable to create vblank handle.");
         return FALSE;
     }
 
-    if (nvApiHeadIsActive(pDispEvo, apiHead)) {
-        NvU32 head = nvGetPrimaryHwHead(pDispEvo, apiHead);
-
-        nvAssert(head != NV_INVALID_HEAD);
-
+    if (nvHeadIsActive(pDispEvo, head)) {
         /*
          * Instruct the hardware to enable a semaphore corresponding to this
          * syncpt. The Update State will be populated.
          */
         pDevEvo->hal->ConfigureVblankSyncObject(
                     pDevEvo,
-                    pDispEvo->headState[head].timings.rasterBlankStart.y,
+                    pHeadState->timings.rasterBlankStart.y,
                     head,
                     freeVblankSyncObjectIdx,
                     vblankSyncObjects[freeVblankSyncObjectIdx].evoSyncpt.hCtxDma,
@@ -4157,24 +3909,20 @@ static NvBool EnableVblankSyncObject(
     pParams->reply.vblankHandle = vblankHandle;
     /* Note: the syncpt ID is NOT the same as the vblank handle. */
     pParams->reply.syncptId =
-        pApiHeadState->vblankSyncObjects[freeVblankSyncObjectIdx].evoSyncpt.id;
+        pHeadState->vblankSyncObjects[freeVblankSyncObjectIdx].evoSyncpt.id;
 
     return TRUE;
 }
 
 static void DisableAndCleanVblankSyncObject(struct NvKmsPerOpenDisp *pOpenDisp,
-                                            NvU32 apiHead,
+                                            NvU32 head,
                                             NVVblankSyncObjectRec *pVblankSyncObject,
                                             NVEvoUpdateState *pUpdateState,
                                             NvKmsVblankSyncObjectHandle handle)
 {
     NVDispEvoPtr pDispEvo = pOpenDisp->pDispEvo;
 
-    if (nvApiHeadIsActive(pDispEvo, apiHead)) {
-        NvU32 head = nvGetPrimaryHwHead(pDispEvo, apiHead);
-
-        nvAssert(head != NV_INVALID_HEAD);
-
+    if (nvHeadIsActive(pDispEvo, head)) {
         /*
          * Instruct the hardware to disable the semaphore corresponding to this
          * syncpt. The Update State will be populated.
@@ -4198,7 +3946,7 @@ static void DisableAndCleanVblankSyncObject(struct NvKmsPerOpenDisp *pOpenDisp,
     pVblankSyncObject->enabled = FALSE;
 
     /* Remove the handle from the map. */
-    nvEvoDestroyApiHandle(&pOpenDisp->vblankSyncObjectHandles[apiHead], handle);
+    nvEvoDestroyApiHandle(&pOpenDisp->vblankSyncObjectHandles[head], handle);
 }
 
 static NvBool DisableVblankSyncObject(
@@ -4210,7 +3958,7 @@ static NvBool DisableVblankSyncObject(
         GetPerOpenDisp(pOpen, pParams->request.deviceHandle,
                        pParams->request.dispHandle);
     NVVblankSyncObjectRec *pVblankSyncObject = NULL;
-    NvU32 apiHead = pParams->request.head;
+    NvU32 head = pParams->request.head;
     NVDevEvoPtr pDevEvo = NULL;
     NVEvoUpdateState updateState = { };
 
@@ -4230,14 +3978,14 @@ static NvBool DisableVblankSyncObject(
     }
 
     /* Validate requested head because it comes from user input. */
-    if (apiHead >= ARRAY_LEN(pOpenDisp->pDispEvo->apiHeadState)) {
-        nvEvoLogDebug(EVO_LOG_ERROR, "Invalid head requested, head=%d.", apiHead);
+    if (head >= ARRAY_LEN(pOpenDisp->pDispEvo->headState)) {
+        nvEvoLogDebug(EVO_LOG_ERROR, "Invalid head requested, head=%d.", head);
         return FALSE;
     }
 
     /* Mark the indicated object as free. */
     pVblankSyncObject =
-        nvEvoGetPointerFromApiHandle(&pOpenDisp->vblankSyncObjectHandles[apiHead],
+        nvEvoGetPointerFromApiHandle(&pOpenDisp->vblankSyncObjectHandles[head],
                                      pParams->request.vblankHandle);
     if (pVblankSyncObject == NULL) {
         nvEvoLogDebug(EVO_LOG_ERROR, "unable to find object with provided "
@@ -4245,7 +3993,7 @@ static NvBool DisableVblankSyncObject(
         return FALSE;
     }
 
-    DisableAndCleanVblankSyncObject(pOpenDisp, apiHead, pVblankSyncObject,
+    DisableAndCleanVblankSyncObject(pOpenDisp, head, pVblankSyncObject,
                                     &updateState, pParams->request.vblankHandle);
 
     if (!nvIsUpdateStateEmpty(pOpenDisp->pDispEvo->pDevEvo, &updateState)) {
@@ -4262,6 +4010,7 @@ static NvBool DisableVblankSyncObject(
 }
 
 static void NotifyVblankCallback(NVDispEvoRec *pDispEvo,
+                                 const NvU32 head,
                                  NVVBlankCallbackPtr pCallbackData)
 {
     struct NvKmsPerOpen *pEventOpenFd = pCallbackData->pUserData;
@@ -4285,7 +4034,7 @@ static NvBool NotifyVblank(
     struct NvKmsPerOpenDisp* pOpenDisp =
         GetPerOpenDisp(pOpen, pParams->request.deviceHandle,
                        pParams->request.dispHandle);
-    const NvU32 apiHead = pParams->request.head;
+    NvU32 head = pParams->request.head;
 
     pEventOpenFd = nvkms_get_per_open_data(pParams->request.unicastEvent.fd);
 
@@ -4299,23 +4048,25 @@ static NvBool NotifyVblank(
 
     pEventOpenFd->type = NvKmsPerOpenTypeUnicastEvent;
 
-    pCallbackData = nvApiHeadRegisterVBlankCallback(pOpenDisp->pDispEvo,
-                                                    apiHead,
-                                                    NotifyVblankCallback,
-                                                    pEventOpenFd);
+    pCallbackData = nvRegisterVBlankCallback(pOpenDisp->pDispEvo,
+                                  head,
+                                  NotifyVblankCallback,
+                                  pEventOpenFd);
     if (pCallbackData == NULL) {
         return NV_FALSE;
     }
 
     pEventOpenFd->unicastEvent.type = NvKmsUnicastEventTypeVblankNotification;
     pEventOpenFd->unicastEvent.e.vblankNotification.pOpenDisp = pOpenDisp;
-    pEventOpenFd->unicastEvent.e.vblankNotification.apiHead = apiHead;
+    pEventOpenFd->unicastEvent.e.vblankNotification.head = head;
     pEventOpenFd->unicastEvent.e.vblankNotification.hCallback
-        = nvEvoCreateApiHandle(&pOpenDisp->vblankCallbackHandles[apiHead],
+        = nvEvoCreateApiHandle(&pOpenDisp->vblankCallbackHandles[head],
                                pCallbackData);
 
     if (pEventOpenFd->unicastEvent.e.vblankNotification.hCallback == 0) {
-        nvApiHeadUnregisterVBlankCallback(pOpenDisp->pDispEvo, pCallbackData);
+        nvUnregisterVBlankCallback(pOpenDisp->pDispEvo,
+                                   head,
+                                   pCallbackData);
         return NV_FALSE;
     }
 
@@ -4394,7 +4145,7 @@ NvBool nvKmsIoctl(
         ENTRY(NVKMS_IOCTL_MOVE_CURSOR, MoveCursor),
         ENTRY_CUSTOM_USER(NVKMS_IOCTL_SET_LUT, SetLut),
         ENTRY(NVKMS_IOCTL_IDLE_BASE_CHANNEL, IdleBaseChannel),
-        ENTRY_CUSTOM_USER(NVKMS_IOCTL_FLIP, Flip),
+        ENTRY(NVKMS_IOCTL_FLIP, Flip),
         ENTRY(NVKMS_IOCTL_DECLARE_DYNAMIC_DPY_INTEREST,
               DeclareDynamicDpyInterest),
         ENTRY(NVKMS_IOCTL_REGISTER_SURFACE, RegisterSurface),
@@ -4817,7 +4568,7 @@ ProcFsPrintClients(
                 case NvKmsUnicastEventTypeVblankNotification:
                     nvEvoLogInfoString(&infoString,
                         "  head      : %x",
-                        pOpen->unicastEvent.e.vblankNotification.apiHead);
+                        pOpen->unicastEvent.e.vblankNotification.head);
                     break;
                 default:
                     break;
@@ -5002,7 +4753,7 @@ ProcFsPrintHeadSurface(
 {
     NVDevEvoPtr pDevEvo;
     NVDispEvoPtr pDispEvo;
-    NvU32 dispIndex, apiHead;
+    NvU32 dispIndex, head;
     NVEvoInfoStringRec infoString;
 
     FOR_ALL_EVO_DEVS(pDevEvo) {
@@ -5021,9 +4772,9 @@ ProcFsPrintHeadSurface(
                                dispIndex, pDispEvo);
             outString(data, buffer);
 
-            for (apiHead = 0; apiHead < pDevEvo->numApiHeads; apiHead++) {
+            for (head = 0; head < pDevEvo->numHeads; head++) {
                 nvInitInfoString(&infoString, buffer, size);
-                nvHsProcFs(&infoString, pDevEvo, dispIndex, apiHead);
+                nvHsProcFs(&infoString, pDevEvo, dispIndex, head);
                 nvEvoLogInfoString(&infoString, "");
                 outString(data, buffer);
             }
@@ -5335,8 +5086,6 @@ static void FreeGlobalState(void)
                     nvEvoGlobal.clientHandle);
         nvEvoGlobal.clientHandle = 0;
     }
-
-    nvClearDpyOverrides();
 }
 
 NvBool nvKmsModuleLoad(void)
@@ -5546,11 +5295,34 @@ void nvSendFrameLockAttributeChangedEventEvo(
 }
 
 
-void nvSendFlipOccurredEventEvo(const NVDispEvoRec *pDispEvo,
-                                const NvU32 apiHead, const NvU32 layer)
+void nvSendFlipOccurredEventEvo(
+    const NVDevEvoRec *pDevEvo,
+    NVEvoChannelMask channelMask)
 {
     struct NvKmsPerOpen *pOpen;
     const NvU32 eventType = NVKMS_EVENT_TYPE_FLIP_OCCURRED;
+    const NvU32 dispIndex = 0; /* XXX NVKMS TODO: need disp-scope in event */
+    const NVDispEvoRec *pDispEvo = pDevEvo->pDispEvo[dispIndex];
+    NvU32 head, layer;
+
+    nvAssert(NV_EVO_CHANNEL_MASK_POPCOUNT(channelMask) == 1);
+
+    for (head = 0; head < pDevEvo->numHeads; head++) {
+        for (layer = 0; layer < pDevEvo->head[head].numLayers; layer++) {
+            if (pDevEvo->head[head].layer[layer]->channelMask == channelMask) {
+                break;
+            }
+        }
+
+        if (layer < pDevEvo->head[head].numLayers) {
+            break;
+        }
+    }
+
+    if (head >= pDevEvo->numHeads) {
+        nvAssert(!"Bad channelMask");
+        return;
+    }
 
     nvListForEachEntry(pOpen, &perOpenIoctlList, perOpenIoctlListEntry) {
 
@@ -5561,7 +5333,7 @@ void nvSendFlipOccurredEventEvo(const NVDispEvoRec *pDispEvo,
         struct NvKmsPerOpenDev *pOpenDev;
         const struct NvKmsFlipPermissions *pFlipPermissions;
 
-        pOpenDev = DevEvoToOpenDev(pOpen, pDispEvo->pDevEvo);
+        pOpenDev = DevEvoToOpenDev(pOpen, pDevEvo);
 
         if (pOpenDev == NULL) {
             continue;
@@ -5573,8 +5345,8 @@ void nvSendFlipOccurredEventEvo(const NVDispEvoRec *pDispEvo,
 
         pFlipPermissions = &pOpenDev->flipPermissions;
 
-        if ((pFlipPermissions->disp[pDispEvo->displayOwner].
-                head[apiHead].layerMask & NVBIT(layer)) == 0x0) {
+        if ((pFlipPermissions->disp[dispIndex].head[head].layerMask &
+             NVBIT(layer)) == 0x0) {
             continue;
         }
 
@@ -5586,7 +5358,7 @@ void nvSendFlipOccurredEventEvo(const NVDispEvoRec *pDispEvo,
         event.eventType = eventType;
         event.u.flipOccurred.deviceHandle = deviceHandle;
         event.u.flipOccurred.dispHandle = dispHandle;
-        event.u.flipOccurred.head = apiHead;
+        event.u.flipOccurred.head = head;
         event.u.flipOccurred.layer = layer;
 
         SendEvent(pOpen, &event);
@@ -5611,7 +5383,7 @@ void nvRemoveUnicastEvent(struct NvKmsPerOpen *pOpen)
     NvKmsGenericHandle callbackHandle;
     NVVBlankCallbackPtr pCallbackData;
     struct NvKmsPerOpenDisp *pOpenDisp;
-    NvU32 apiHead;
+    NvU32 head;
 
     if (pOpen == NULL) {
         return;
@@ -5634,23 +5406,24 @@ void nvRemoveUnicastEvent(struct NvKmsPerOpen *pOpen)
                 pOpen->unicastEvent.e.vblankNotification.hCallback;
             pOpenDisp =
                 pOpen->unicastEvent.e.vblankNotification.pOpenDisp;
-            apiHead = pOpen->unicastEvent.e.vblankNotification.apiHead;
+            head = pOpen->unicastEvent.e.vblankNotification.head;
 
             /* Unregister the vblank callback */
             pCallbackData =
-                nvEvoGetPointerFromApiHandle(&pOpenDisp->vblankCallbackHandles[apiHead],
+                nvEvoGetPointerFromApiHandle(&pOpenDisp->vblankCallbackHandles[head],
                                              callbackHandle);
 
-            nvApiHeadUnregisterVBlankCallback(pOpenDisp->pDispEvo,
-                                              pCallbackData);
+            nvUnregisterVBlankCallback(pOpenDisp->pDispEvo,
+                                       head,
+                                       pCallbackData);
 
-            nvEvoDestroyApiHandle(&pOpenDisp->vblankCallbackHandles[apiHead],
+            nvEvoDestroyApiHandle(&pOpenDisp->vblankCallbackHandles[head],
                                   callbackHandle);
 
             /* invalidate the pOpen data */
             pOpen->unicastEvent.e.vblankNotification.hCallback = 0;
             pOpen->unicastEvent.e.vblankNotification.pOpenDisp = NULL;
-            pOpen->unicastEvent.e.vblankNotification.apiHead = NV_INVALID_HEAD;
+            pOpen->unicastEvent.e.vblankNotification.head = NV_INVALID_HEAD;
             break;
         default:
             nvAssert("Invalid Unicast Event Type!");
@@ -5865,8 +5638,8 @@ void nvKmsSuspend(NvU32 gpuId)
              * that becomes stale after suspend. Shutting the heads down here
              * clears the relevant state explicitly.
              */
-            nvShutDownApiHeads(pDevEvo,
-                               NULL /* pTestFunc, shut down all heads */);
+            nvShutDownHeads(pDevEvo,
+                            NULL /* pTestFunc, shut down all heads */);
             pDevEvo->skipConsoleRestore = TRUE;
 
             FreeSurfaceCtxDmasForAllOpens(pDevEvo);

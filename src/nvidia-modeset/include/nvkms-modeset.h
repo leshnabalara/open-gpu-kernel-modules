@@ -48,12 +48,19 @@ NvBool nvSetDispModeEvo(NVDevEvoPtr pDevEvo,
                         NvBool bypassComposition,
                         NvBool doRasterLock);
 
-typedef NvBool (*NVShutDownApiHeadsTestFunc)(
+typedef NvBool (*NVShutDownHeadsTestFunc)(
     const NVDispEvoRec *pDispEvo,
-    const NvU32 apiHead);
+    const NvU32 head);
 
-void nvShutDownApiHeads(NVDevEvoPtr pDevEvo,
-                        NVShutDownApiHeadsTestFunc pTestFunc);
+void nvShutDownHeads(NVDevEvoPtr pDevEvo, NVShutDownHeadsTestFunc pTestFunc);
+
+NVVBlankCallbackPtr nvRegisterVBlankCallback(NVDispEvoPtr pDispEvo,
+                                             NvU32 head,
+                                             NVVBlankCallbackProc pCallback,
+                                             void *pUserData);
+void nvUnregisterVBlankCallback(NVDispEvoPtr pDispEvo,
+                                NvU32 head,
+                                NVVBlankCallbackPtr pCallback);
 
 NVVBlankCallbackPtr
 nvApiHeadRegisterVBlankCallback(NVDispEvoPtr pDispEvo,
@@ -62,18 +69,13 @@ nvApiHeadRegisterVBlankCallback(NVDispEvoPtr pDispEvo,
                                 void *pUserData);
 
 void nvApiHeadUnregisterVBlankCallback(NVDispEvoPtr pDispEvo,
+                                       const NvU32 apiHead,
                                        NVVBlankCallbackPtr pCallback);
 
-NVRgLine1CallbackPtr
-nvApiHeadAddRgLine1Callback(NVDispEvoRec *pDispEvo,
+NvU32
+nvApiHeadAddRgLine1Callback(const NVDispEvoRec *pDispEvo,
                             const NvU32 apiHead,
-                            NVRgLine1CallbackProc pCallbackProc,
-                            void *pUserData);
-
-void nvApiHeadGetScanLine(const NVDispEvoRec *pDispEvo,
-                          const NvU32 apiHead,
-                          NvU16 *pScanLine,
-                          NvBool *pInBlankingPeriod);
+                            NV0092_REGISTER_RG_LINE_CALLBACK_FN pCallback);
 
 #ifdef __cplusplus
 };

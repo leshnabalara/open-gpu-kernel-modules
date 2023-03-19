@@ -66,11 +66,6 @@ subdeviceCtrlCmdCeGetCaps_IMPL
 
     rmEngineType = gpuGetRmEngineType(pCeCapsParams->ceEngineType);
 
-    if (!RM_ENGINE_TYPE_IS_COPY(rmEngineType))
-    {
-        return NV_ERR_NOT_SUPPORTED;
-    }
-
     //
     // vGPU:
     //

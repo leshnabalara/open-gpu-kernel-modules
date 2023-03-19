@@ -26,22 +26,6 @@
 
 #include "nvkms-types.h"
 
-typedef struct {
-    struct {
-        enum NvKmsOutputTf tf;
-        enum NvKmsDpyAttributeCurrentColorSpaceValue colorSpace;
-        enum NvKmsDpyAttributeColorBpcValue colorBpc;
-        enum NvKmsDpyAttributeColorRangeValue colorRange;
-    } hdr;
-
-    struct NvKmsPoint viewPortPointIn;
-
-    struct {
-        NvU32 viewPortPointIn  : 1;
-        NvU32 hdr              : 1;
-    } dirty;
-} NVProposedFlipStateOneApiHead;
-
 struct NvKmsFlipWorkArea {
     struct {
         NvBool changed;
@@ -59,12 +43,6 @@ struct NvKmsFlipWorkArea {
             NVFlipEvoHwState oldState;
         } head[NVKMS_MAX_HEADS_PER_DISP];
     } sd[NVKMS_MAX_SUBDEVICES];
-
-    struct {
-        struct {
-            NVProposedFlipStateOneApiHead proposedFlipState;
-        } apiHead[NVKMS_MAX_HEADS_PER_DISP];
-    } disp[NVKMS_MAX_SUBDEVICES];
 };
 
 #endif /* __NVKMS_FLIP_WORKAREA_H__ */

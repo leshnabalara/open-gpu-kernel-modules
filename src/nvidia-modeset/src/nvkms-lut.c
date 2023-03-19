@@ -40,15 +40,6 @@ static void FreeLutSurfaceEvoInVidmem(NVLutSurfaceEvoPtr pSurfEvo)
 
     pDevEvo = pSurfEvo->pDevEvo;
 
-    if (pSurfEvo->gpuAddress) {
-        nvRmApiUnmapMemoryDma(nvEvoGlobal.clientHandle,
-                              pDevEvo->deviceHandle,
-                              pDevEvo->nvkmsGpuVASpace,
-                              pSurfEvo->handle,
-                              0,
-                              (NvU64)pSurfEvo->gpuAddress);
-    }
-
     nvRmEvoUnMapVideoMemory(pDevEvo, pSurfEvo->handle,
                             pSurfEvo->subDeviceAddress);
 
@@ -148,24 +139,6 @@ static NVLutSurfaceEvoPtr AllocLutSurfaceEvoInVidmem(NVDevEvoPtr pDevEvo)
                                pSurfEvo->subDeviceAddress,
                                SUBDEVICE_MASK_ALL)) {
         goto fail;
-    }
-
-    /*
-     * The GPU mapping is only needed for prefetching LUT surfaces for DIFR.
-     * It isn't worth failing alone but we want to keep gpuAddress coherent.
-     */
-    ret = nvRmApiMapMemoryDma(nvEvoGlobal.clientHandle,
-                              pDevEvo->deviceHandle,
-                              pDevEvo->nvkmsGpuVASpace,
-                              pSurfEvo->handle,
-                              0,
-                              pSurfEvo->size,
-                              DRF_DEF(OS46, _FLAGS, _CACHE_SNOOP, _ENABLE) |
-                              DRF_DEF(OS46, _FLAGS, _ACCESS, _READ_ONLY),
-                              &pSurfEvo->gpuAddress);
-
-    if (ret != NVOS_STATUS_SUCCESS) {
-        pSurfEvo->gpuAddress = 0ULL;
     }
 
     return pSurfEvo;
@@ -385,13 +358,13 @@ void nvUnrefTmoLutSurfacesEvo(NVDevEvoPtr pDevEvo,
 NvBool nvAllocLutSurfacesEvo(NVDevEvoPtr pDevEvo)
 {
     NVDispEvoPtr pDispEvo;
-    NvU32 apiHead, dispIndex, i, sd;
+    NvU32 head, dispIndex, i, sd;
 
-    for (apiHead = 0; apiHead < pDevEvo->numApiHeads; apiHead++) {
-        for (i = 0; i < ARRAY_LEN(pDevEvo->lut.apiHead[apiHead].LUT); i++) {
-            pDevEvo->lut.apiHead[apiHead].LUT[i] = AllocLutSurfaceEvo(pDevEvo);
+    for (head = 0; head < pDevEvo->numHeads; head++) {
+        for (i = 0; i < ARRAY_LEN(pDevEvo->lut.head[head].LUT); i++) {
+            pDevEvo->lut.head[head].LUT[i] = AllocLutSurfaceEvo(pDevEvo);
 
-            if (pDevEvo->lut.apiHead[apiHead].LUT[i] == NULL) {
+            if (pDevEvo->lut.head[head].LUT[i] == NULL) {
                 nvFreeLutSurfacesEvo(pDevEvo);
                 return FALSE;
             }
@@ -399,9 +372,9 @@ NvBool nvAllocLutSurfacesEvo(NVDevEvoPtr pDevEvo)
 
         FOR_ALL_EVO_DISPLAYS(pDispEvo, dispIndex, pDevEvo) {
             // No palette has been loaded yet, so disable the LUT.
-            pDevEvo->lut.apiHead[apiHead].disp[dispIndex].waitForPreviousUpdate = FALSE;
-            pDevEvo->lut.apiHead[apiHead].disp[dispIndex].curBaseLutEnabled = FALSE;
-            pDevEvo->lut.apiHead[apiHead].disp[dispIndex].curOutputLutEnabled = FALSE;
+            pDevEvo->lut.head[head].disp[dispIndex].waitForPreviousUpdate = FALSE;
+            pDevEvo->lut.head[head].disp[dispIndex].curBaseLutEnabled = FALSE;
+            pDevEvo->lut.head[head].disp[dispIndex].curOutputLutEnabled = FALSE;
         }
     }
 
@@ -426,13 +399,13 @@ NvBool nvAllocLutSurfacesEvo(NVDevEvoPtr pDevEvo)
 
 void nvFreeLutSurfacesEvo(NVDevEvoPtr pDevEvo)
 {
-    NvU32 head, i, dispIndex, apiHead;
+    NvU32 head, i, dispIndex;
     NVDispEvoPtr pDispEvo;
 
     /* Cancel any queued LUT update timers */
     FOR_ALL_EVO_DISPLAYS(pDispEvo, dispIndex, pDevEvo) {
-        for (apiHead = 0; apiHead < pDevEvo->numApiHeads; apiHead++) {
-            nvCancelLutUpdateEvo(pDispEvo, apiHead);
+        for (head = 0; head < pDevEvo->numHeads; head++) {
+            nvCancelLutUpdateEvo(pDispEvo, head);
         }
     }
 
@@ -441,25 +414,16 @@ void nvFreeLutSurfacesEvo(NVDevEvoPtr pDevEvo)
         nvRMSyncEvoChannel(pDevEvo, pDevEvo->core, __LINE__);
     }
 
-    /* Clear the current lut surface stored in the hardware head state */
-    FOR_ALL_EVO_DISPLAYS(pDispEvo, dispIndex, pDevEvo) {
-        for (head = 0; head < pDevEvo->numHeads; head++) {
-            pDispEvo->headState[head].lut.pCurrSurface = NULL;
-            pDispEvo->headState[head].lut.baseLutEnabled = FALSE;
-            pDispEvo->headState[head].lut.outputLutEnabled = FALSE;
-        }
-    }
-
     if (pDevEvo->lut.defaultLut != NULL) {
         FreeLutSurfaceEvo(pDevEvo->lut.defaultLut);
         pDevEvo->lut.defaultLut = NULL;
     }
 
-    for (apiHead = 0; apiHead < pDevEvo->numApiHeads; apiHead++) {
-        for (i = 0; i < ARRAY_LEN(pDevEvo->lut.apiHead[apiHead].LUT); i++) {
-            if (pDevEvo->lut.apiHead[apiHead].LUT[i] != NULL) {
-                FreeLutSurfaceEvo(pDevEvo->lut.apiHead[apiHead].LUT[i]);
-                pDevEvo->lut.apiHead[apiHead].LUT[i] = NULL;
+    for (head = 0; head < pDevEvo->numHeads; head++) {
+        for (i = 0; i < ARRAY_LEN(pDevEvo->lut.head[head].LUT); i++) {
+            if (pDevEvo->lut.head[head].LUT[i] != NULL) {
+                FreeLutSurfaceEvo(pDevEvo->lut.head[head].LUT[i]);
+                pDevEvo->lut.head[head].LUT[i] = NULL;
             }
         }
     }

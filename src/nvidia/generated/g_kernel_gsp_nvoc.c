@@ -88,7 +88,7 @@ static NV_STATUS __nvoc_thunk_KernelGsp_engstateConstructEngine(struct OBJGPU *p
     return kgspConstructEngine(pGpu, (struct KernelGsp *)(((unsigned char *)pKernelGsp) - __nvoc_rtti_KernelGsp_OBJENGSTATE.offset), arg0);
 }
 
-static void __nvoc_thunk_KernelGsp_intrservRegisterIntrService(struct OBJGPU *pGpu, struct IntrService *pKernelGsp, IntrServiceRecord pRecords[166]) {
+static void __nvoc_thunk_KernelGsp_intrservRegisterIntrService(struct OBJGPU *pGpu, struct IntrService *pKernelGsp, IntrServiceRecord pRecords[163]) {
     kgspRegisterIntrService(pGpu, (struct KernelGsp *)(((unsigned char *)pKernelGsp) - __nvoc_rtti_KernelGsp_IntrService.offset), pRecords);
 }
 
@@ -98,6 +98,34 @@ static NvU32 __nvoc_thunk_KernelGsp_intrservServiceInterrupt(struct OBJGPU *pGpu
 
 static NV_STATUS __nvoc_thunk_KernelGsp_kflcnResetHw(struct OBJGPU *pGpu, struct KernelFalcon *pKernelGsp) {
     return kgspResetHw(pGpu, (struct KernelGsp *)(((unsigned char *)pKernelGsp) - __nvoc_rtti_KernelGsp_KernelFalcon.offset));
+}
+
+static NvBool __nvoc_thunk_KernelGsp_kflcnIsEngineInReset(struct OBJGPU *pGpu, struct KernelFalcon *pKernelGsp) {
+    return kgspIsEngineInReset(pGpu, (struct KernelGsp *)(((unsigned char *)pKernelGsp) - __nvoc_rtti_KernelGsp_KernelFalcon.offset));
+}
+
+static void __nvoc_thunk_OBJENGSTATE_kgspStateDestroy(POBJGPU pGpu, struct KernelGsp *pEngstate) {
+    engstateStateDestroy(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelGsp_OBJENGSTATE.offset));
+}
+
+static void __nvoc_thunk_OBJENGSTATE_kgspFreeTunableState(POBJGPU pGpu, struct KernelGsp *pEngstate, void *pTunableState) {
+    engstateFreeTunableState(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelGsp_OBJENGSTATE.offset), pTunableState);
+}
+
+static NV_STATUS __nvoc_thunk_OBJENGSTATE_kgspCompareTunableState(POBJGPU pGpu, struct KernelGsp *pEngstate, void *pTunables1, void *pTunables2) {
+    return engstateCompareTunableState(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelGsp_OBJENGSTATE.offset), pTunables1, pTunables2);
+}
+
+static NvBool __nvoc_thunk_IntrService_kgspClearInterrupt(struct OBJGPU *pGpu, struct KernelGsp *pIntrService, IntrServiceClearInterruptArguments *pParams) {
+    return intrservClearInterrupt(pGpu, (struct IntrService *)(((unsigned char *)pIntrService) + __nvoc_rtti_KernelGsp_IntrService.offset), pParams);
+}
+
+static NvBool __nvoc_thunk_OBJENGSTATE_kgspIsPresent(POBJGPU pGpu, struct KernelGsp *pEngstate) {
+    return engstateIsPresent(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelGsp_OBJENGSTATE.offset));
+}
+
+static NV_STATUS __nvoc_thunk_OBJENGSTATE_kgspReconcileTunableState(POBJGPU pGpu, struct KernelGsp *pEngstate, void *pTunableState) {
+    return engstateReconcileTunableState(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelGsp_OBJENGSTATE.offset), pTunableState);
 }
 
 static NV_STATUS __nvoc_thunk_OBJENGSTATE_kgspStateLoad(POBJGPU pGpu, struct KernelGsp *pEngstate, NvU32 arg0) {
@@ -124,12 +152,12 @@ static NV_STATUS __nvoc_thunk_OBJENGSTATE_kgspStatePostUnload(POBJGPU pGpu, stru
     return engstateStatePostUnload(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelGsp_OBJENGSTATE.offset), arg0);
 }
 
-static void __nvoc_thunk_OBJENGSTATE_kgspStateDestroy(POBJGPU pGpu, struct KernelGsp *pEngstate) {
-    engstateStateDestroy(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelGsp_OBJENGSTATE.offset));
-}
-
 static NV_STATUS __nvoc_thunk_OBJENGSTATE_kgspStatePreUnload(POBJGPU pGpu, struct KernelGsp *pEngstate, NvU32 arg0) {
     return engstateStatePreUnload(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelGsp_OBJENGSTATE.offset), arg0);
+}
+
+static NV_STATUS __nvoc_thunk_OBJENGSTATE_kgspGetTunableState(POBJGPU pGpu, struct KernelGsp *pEngstate, void *pTunableState) {
+    return engstateGetTunableState(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelGsp_OBJENGSTATE.offset), pTunableState);
 }
 
 static NV_STATUS __nvoc_thunk_OBJENGSTATE_kgspStateInitUnlocked(POBJGPU pGpu, struct KernelGsp *pEngstate) {
@@ -148,16 +176,16 @@ static NV_STATUS __nvoc_thunk_OBJENGSTATE_kgspStatePreInitUnlocked(POBJGPU pGpu,
     return engstateStatePreInitUnlocked(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelGsp_OBJENGSTATE.offset));
 }
 
-static NvBool __nvoc_thunk_IntrService_kgspClearInterrupt(struct OBJGPU *pGpu, struct KernelGsp *pIntrService, IntrServiceClearInterruptArguments *pParams) {
-    return intrservClearInterrupt(pGpu, (struct IntrService *)(((unsigned char *)pIntrService) + __nvoc_rtti_KernelGsp_IntrService.offset), pParams);
-}
-
 static NV_STATUS __nvoc_thunk_OBJENGSTATE_kgspStatePostLoad(POBJGPU pGpu, struct KernelGsp *pEngstate, NvU32 arg0) {
     return engstateStatePostLoad(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelGsp_OBJENGSTATE.offset), arg0);
 }
 
-static NvBool __nvoc_thunk_OBJENGSTATE_kgspIsPresent(POBJGPU pGpu, struct KernelGsp *pEngstate) {
-    return engstateIsPresent(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelGsp_OBJENGSTATE.offset));
+static NV_STATUS __nvoc_thunk_OBJENGSTATE_kgspAllocTunableState(POBJGPU pGpu, struct KernelGsp *pEngstate, void **ppTunableState) {
+    return engstateAllocTunableState(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelGsp_OBJENGSTATE.offset), ppTunableState);
+}
+
+static NV_STATUS __nvoc_thunk_OBJENGSTATE_kgspSetTunableState(POBJGPU pGpu, struct KernelGsp *pEngstate, void *pTunableState) {
+    return engstateSetTunableState(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelGsp_OBJENGSTATE.offset), pTunableState);
 }
 
 const struct NVOC_EXPORT_INFO __nvoc_export_info_KernelGsp = 
@@ -188,9 +216,6 @@ void __nvoc_init_dataField_KernelGsp(KernelGsp *pThis, RmHalspecOwner *pRmhalspe
     PORT_UNREFERENCED_VARIABLE(chipHal_HalVarIdx);
     PORT_UNREFERENCED_VARIABLE(rmVariantHal);
     PORT_UNREFERENCED_VARIABLE(rmVariantHal_HalVarIdx);
-
-    // Hal field -- bIsTaskIsrQueueRequired
-    pThis->bIsTaskIsrQueueRequired = ((NvBool)(0 != 0));
 
     // Hal field -- bPartitionedFmc
     if (( ((chipHal_HalVarIdx >> 5) == 1UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x10000000UL) )) /* ChipHal: GH100 */ 
@@ -450,6 +475,15 @@ static void __nvoc_init_funcTable_KernelGsp_1(KernelGsp *pThis, RmHalspecOwner *
         }
     }
 
+    // Hal function -- kgspIsEngineInReset
+    if (( ((rmVariantHal_HalVarIdx >> 5) == 0UL) && ((1UL << (rmVariantHal_HalVarIdx & 0x1f)) & 0x00000002UL) )) /* RmVariantHal: PF_KERNEL_ONLY */ 
+    {
+        if (( ((chipHal_HalVarIdx >> 5) == 1UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x11f0ffe0UL) )) /* ChipHal: TU102 | TU104 | TU106 | TU116 | TU117 | GA100 | GA102 | GA103 | GA104 | GA106 | GA107 | AD102 | AD103 | AD104 | AD106 | AD107 | GH100 */ 
+        {
+            pThis->__kgspIsEngineInReset__ = &kgspIsEngineInReset_TU102;
+        }
+    }
+
     // Hal function -- kgspGetFrtsSize
     if (( ((rmVariantHal_HalVarIdx >> 5) == 0UL) && ((1UL << (rmVariantHal_HalVarIdx & 0x1f)) & 0x00000002UL) )) /* RmVariantHal: PF_KERNEL_ONLY */ 
     {
@@ -647,22 +681,26 @@ static void __nvoc_init_funcTable_KernelGsp_1(KernelGsp *pThis, RmHalspecOwner *
     {
         if (( ((chipHal_HalVarIdx >> 5) == 1UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x100007e0UL) )) /* ChipHal: TU102 | TU104 | TU106 | TU116 | TU117 | GA100 | GH100 */ 
         {
-            pThis->__kgspGetWprHeapSize__ = &kgspGetWprHeapSize_45a5e0;
+            pThis->__kgspGetWprHeapSize__ = &kgspGetWprHeapSize_5661b8;
         }
-        else if (( ((chipHal_HalVarIdx >> 5) == 1UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x01f0f800UL) )) /* ChipHal: GA102 | GA103 | GA104 | GA106 | GA107 | AD102 | AD103 | AD104 | AD106 | AD107 */ 
+        else if (( ((chipHal_HalVarIdx >> 5) == 1UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x0000f800UL) )) /* ChipHal: GA102 | GA103 | GA104 | GA106 | GA107 */ 
         {
-            pThis->__kgspGetWprHeapSize__ = &kgspGetWprHeapSize_31541f;
+            pThis->__kgspGetWprHeapSize__ = &kgspGetWprHeapSize_15390a;
+        }
+        else if (( ((chipHal_HalVarIdx >> 5) == 1UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x01f00000UL) )) /* ChipHal: AD102 | AD103 | AD104 | AD106 | AD107 */ 
+        {
+            pThis->__kgspGetWprHeapSize__ = &kgspGetWprHeapSize_AD102;
         }
     }
 
     // Hal function -- kgspInitVgpuPartitionLogging
     if (( ((rmVariantHal_HalVarIdx >> 5) == 0UL) && ((1UL << (rmVariantHal_HalVarIdx & 0x1f)) & 0x00000002UL) )) /* RmVariantHal: PF_KERNEL_ONLY */ 
     {
-        if (( ((chipHal_HalVarIdx >> 5) == 1UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x100007e0UL) )) /* ChipHal: TU102 | TU104 | TU106 | TU116 | TU117 | GA100 | GH100 */ 
+        if (( ((chipHal_HalVarIdx >> 5) == 1UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x1000ffe0UL) )) /* ChipHal: TU102 | TU104 | TU106 | TU116 | TU117 | GA100 | GA102 | GA103 | GA104 | GA106 | GA107 | GH100 */ 
         {
             pThis->__kgspInitVgpuPartitionLogging__ = &kgspInitVgpuPartitionLogging_395e98;
         }
-        else if (( ((chipHal_HalVarIdx >> 5) == 1UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x01f0f800UL) )) /* ChipHal: GA102 | GA103 | GA104 | GA106 | GA107 | AD102 | AD103 | AD104 | AD106 | AD107 */ 
+        else if (( ((chipHal_HalVarIdx >> 5) == 1UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x01f00000UL) )) /* ChipHal: AD102 | AD103 | AD104 | AD106 | AD107 */ 
         {
             pThis->__kgspInitVgpuPartitionLogging__ = &kgspInitVgpuPartitionLogging_IMPL;
         }
@@ -671,11 +709,11 @@ static void __nvoc_init_funcTable_KernelGsp_1(KernelGsp *pThis, RmHalspecOwner *
     // Hal function -- kgspFreeVgpuPartitionLogging
     if (( ((rmVariantHal_HalVarIdx >> 5) == 0UL) && ((1UL << (rmVariantHal_HalVarIdx & 0x1f)) & 0x00000002UL) )) /* RmVariantHal: PF_KERNEL_ONLY */ 
     {
-        if (( ((chipHal_HalVarIdx >> 5) == 1UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x100007e0UL) )) /* ChipHal: TU102 | TU104 | TU106 | TU116 | TU117 | GA100 | GH100 */ 
+        if (( ((chipHal_HalVarIdx >> 5) == 1UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x1000ffe0UL) )) /* ChipHal: TU102 | TU104 | TU106 | TU116 | TU117 | GA100 | GA102 | GA103 | GA104 | GA106 | GA107 | GH100 */ 
         {
             pThis->__kgspFreeVgpuPartitionLogging__ = &kgspFreeVgpuPartitionLogging_395e98;
         }
-        else if (( ((chipHal_HalVarIdx >> 5) == 1UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x01f0f800UL) )) /* ChipHal: GA102 | GA103 | GA104 | GA106 | GA107 | AD102 | AD103 | AD104 | AD106 | AD107 */ 
+        else if (( ((chipHal_HalVarIdx >> 5) == 1UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x01f00000UL) )) /* ChipHal: AD102 | AD103 | AD104 | AD106 | AD107 */ 
         {
             pThis->__kgspFreeVgpuPartitionLogging__ = &kgspFreeVgpuPartitionLogging_IMPL;
         }
@@ -717,6 +755,20 @@ static void __nvoc_init_funcTable_KernelGsp_1(KernelGsp *pThis, RmHalspecOwner *
 
     pThis->__nvoc_base_KernelFalcon.__kflcnResetHw__ = &__nvoc_thunk_KernelGsp_kflcnResetHw;
 
+    pThis->__nvoc_base_KernelFalcon.__kflcnIsEngineInReset__ = &__nvoc_thunk_KernelGsp_kflcnIsEngineInReset;
+
+    pThis->__kgspStateDestroy__ = &__nvoc_thunk_OBJENGSTATE_kgspStateDestroy;
+
+    pThis->__kgspFreeTunableState__ = &__nvoc_thunk_OBJENGSTATE_kgspFreeTunableState;
+
+    pThis->__kgspCompareTunableState__ = &__nvoc_thunk_OBJENGSTATE_kgspCompareTunableState;
+
+    pThis->__kgspClearInterrupt__ = &__nvoc_thunk_IntrService_kgspClearInterrupt;
+
+    pThis->__kgspIsPresent__ = &__nvoc_thunk_OBJENGSTATE_kgspIsPresent;
+
+    pThis->__kgspReconcileTunableState__ = &__nvoc_thunk_OBJENGSTATE_kgspReconcileTunableState;
+
     pThis->__kgspStateLoad__ = &__nvoc_thunk_OBJENGSTATE_kgspStateLoad;
 
     pThis->__kgspStateUnload__ = &__nvoc_thunk_OBJENGSTATE_kgspStateUnload;
@@ -729,9 +781,9 @@ static void __nvoc_init_funcTable_KernelGsp_1(KernelGsp *pThis, RmHalspecOwner *
 
     pThis->__kgspStatePostUnload__ = &__nvoc_thunk_OBJENGSTATE_kgspStatePostUnload;
 
-    pThis->__kgspStateDestroy__ = &__nvoc_thunk_OBJENGSTATE_kgspStateDestroy;
-
     pThis->__kgspStatePreUnload__ = &__nvoc_thunk_OBJENGSTATE_kgspStatePreUnload;
+
+    pThis->__kgspGetTunableState__ = &__nvoc_thunk_OBJENGSTATE_kgspGetTunableState;
 
     pThis->__kgspStateInitUnlocked__ = &__nvoc_thunk_OBJENGSTATE_kgspStateInitUnlocked;
 
@@ -741,11 +793,11 @@ static void __nvoc_init_funcTable_KernelGsp_1(KernelGsp *pThis, RmHalspecOwner *
 
     pThis->__kgspStatePreInitUnlocked__ = &__nvoc_thunk_OBJENGSTATE_kgspStatePreInitUnlocked;
 
-    pThis->__kgspClearInterrupt__ = &__nvoc_thunk_IntrService_kgspClearInterrupt;
-
     pThis->__kgspStatePostLoad__ = &__nvoc_thunk_OBJENGSTATE_kgspStatePostLoad;
 
-    pThis->__kgspIsPresent__ = &__nvoc_thunk_OBJENGSTATE_kgspIsPresent;
+    pThis->__kgspAllocTunableState__ = &__nvoc_thunk_OBJENGSTATE_kgspAllocTunableState;
+
+    pThis->__kgspSetTunableState__ = &__nvoc_thunk_OBJENGSTATE_kgspSetTunableState;
 }
 
 void __nvoc_init_funcTable_KernelGsp(KernelGsp *pThis, RmHalspecOwner *pRmhalspecowner) {
@@ -773,15 +825,12 @@ NV_STATUS __nvoc_objCreate_KernelGsp(KernelGsp **ppThis, Dynamic *pParent, NvU32
     KernelGsp *pThis;
     RmHalspecOwner *pRmhalspecowner;
 
-    status = __nvoc_handleObjCreateMemAlloc(createFlags, sizeof(KernelGsp), (void**)&pThis, (void**)ppThis);
-    if (status != NV_OK)
-        return status;
+    pThis = portMemAllocNonPaged(sizeof(KernelGsp));
+    if (pThis == NULL) return NV_ERR_NO_MEMORY;
 
     portMemSet(pThis, 0, sizeof(KernelGsp));
 
     __nvoc_initRtti(staticCast(pThis, Dynamic), &__nvoc_class_def_KernelGsp);
-
-    pThis->__nvoc_base_OBJENGSTATE.__nvoc_base_Object.createFlags = createFlags;
 
     if (pParent != NULL && !(createFlags & NVOC_OBJ_CREATE_FLAGS_PARENT_HALSPEC_ONLY))
     {
@@ -802,17 +851,11 @@ NV_STATUS __nvoc_objCreate_KernelGsp(KernelGsp **ppThis, Dynamic *pParent, NvU32
     if (status != NV_OK) goto __nvoc_objCreate_KernelGsp_cleanup;
 
     *ppThis = pThis;
-
     return NV_OK;
 
 __nvoc_objCreate_KernelGsp_cleanup:
     // do not call destructors here since the constructor already called them
-    if (createFlags & NVOC_OBJ_CREATE_FLAGS_IN_PLACE_CONSTRUCT)
-        portMemSet(pThis, 0, sizeof(KernelGsp));
-    else
-        portMemFree(pThis);
-
-    // coverity[leaked_storage:FALSE]
+    portMemFree(pThis);
     return status;
 }
 

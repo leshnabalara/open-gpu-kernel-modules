@@ -275,7 +275,6 @@ knvlinkSetupPeerMapping_GP100
         }
 
         peerLinkMask = pKernelNvlink->peerLinkMasks[gpuGetInstance(pRemoteGpu)];
-        knvlinkGetEffectivePeerLinkMask_HAL(pGpu, pKernelNvlink, pRemoteGpu, &peerLinkMask);
 
         if (peerLinkMask != 0)
         {

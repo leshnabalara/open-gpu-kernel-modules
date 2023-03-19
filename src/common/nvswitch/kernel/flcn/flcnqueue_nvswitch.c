@@ -1172,14 +1172,6 @@ _flcnQueueResponseHandle_IMPL
 
     NVSWITCH_ASSERT(pQueueInfo != NULL);
 
-    if (pMsgGen == NULL)
-    {
-        NVSWITCH_PRINT(device, ERROR,
-            "%s: NULL message\n",
-            __FUNCTION__);
-        return NV_ERR_GENERIC;
-    }
-
     // get the sequence info data associated with this message
     pSeqInfo = flcnableQueueSeqInfoGet(device, pFlcn->pFlcnable, pMsgGen->hdr.seqNumId);
     if ((pSeqInfo == NULL) ||
@@ -1196,7 +1188,7 @@ _flcnQueueResponseHandle_IMPL
     }
 
     // If response was requested
-    if (pSeqInfo->pMsgResp != NULL)
+    if (pSeqInfo->pMsgResp != NULL && pMsgGen != NULL)
     {
         NVSWITCH_ASSERT(pSeqInfo->pMsgResp->hdr.size == pMsgGen->hdr.size);
         msgSize = pMsgGen->hdr.size - RM_FLCN_QUEUE_HDR_SIZE;

@@ -27,14 +27,12 @@
 #include "nvkms-headsurface-3d.h"
 #include "nvkms-headsurface-matrix.h"
 #include "nvkms-headsurface-swapgroup.h"
-#include "nvkms-utils-flip.h"
 #include "nvkms-flip.h"
 #include "nvkms-utils.h"
 #include "nvkms-surface.h"
 #include "nvkms-private.h"
 #include "nvkms-evo.h"
 #include "nvkms-modeset.h"
-#include "nvkms-stereo.h"
 #include "nvkms-prealloc.h"
 #include "nvidia-push-utils.h" /* nvPushIdleChannel() */
 
@@ -700,16 +698,16 @@ static void HsConfigCopyHsChannelToHsConfig(
 
     for (layer = 0; layer < ARRAY_LEN(pHsConfigOneHead->layer); layer++) {
 
-        const NVHsLayerRequestedFlipState *pFlipState =
+        const NVFlipChannelEvoHwState *pHwState =
             HsGetLastFlipQueueEntry(pHsChannel, layer);
 
         /* both structures have the same number of eyes */
         ct_assert(ARRAY_LEN(pHsConfigOneHead->layer[layer].pSurfaceEvo) ==
-                  ARRAY_LEN(pFlipState->pSurfaceEvo));
+                  ARRAY_LEN(pHwState->pSurfaceEvo));
 
         for (eye = NVKMS_LEFT; eye < NVKMS_MAX_EYES; eye++) {
             pHsConfigOneHead->layer[layer].pSurfaceEvo[eye] =
-                pFlipState->pSurfaceEvo[eye];
+                pHwState->pSurfaceEvo[eye];
         }
     }
 }
@@ -1012,7 +1010,7 @@ static void HsConfigInitSwapGroupOneHead(
 
     pChannelConfig->eyeMask = NVBIT(NVKMS_LEFT);
 
-    if (pApiHeadState->stereo.mode != NVKMS_STEREO_DISABLED) {
+    if (pTimings->stereo.mode != NVKMS_STEREO_DISABLED) {
         pChannelConfig->eyeMask |= NVBIT(NVKMS_RIGHT);
     }
 
@@ -1820,7 +1818,7 @@ static void HsConfigInitFlipQueue(
      */
     for (layer = 0; layer < ARRAY_LEN(pHsConfigOneHead->layer); layer++) {
 
-        NVHsLayerRequestedFlipState hwState = { };
+        NVFlipChannelEvoHwState hwState = { };
 
         nvkms_memset(&pHsChannel->flipQueue[layer], 0,
                      sizeof(pHsChannel->flipQueue[layer]));
@@ -1881,22 +1879,26 @@ static void HsMainLayerFlip(
     const NVDispEvoRec *pDispEvo = pHsChannel->pDispEvo;
     NVDevEvoRec *pDevEvo = pDispEvo->pDevEvo;
     const NvU32 apiHead = pHsChannel->apiHead;
+    struct NvKmsFlipRequest *pRequest;
+    struct NvKmsFlipParams *pFlipParams;
     const NvU32 sd = pDispEvo->displayOwner;
     NvBool ret;
     NvU8 eye;
     struct NvKmsFlipCommonParams *pParamsOneHead;
 
     /*
-     * Use preallocated memory, so that we don't have to allocate
+     * Use a preallocated NvKmsFlipRequest, so that we don't have to allocate
      * memory here (and deal with allocation failure).
      */
-    struct NvKmsFlipRequestOneHead *pFlipHead = &pHsChannel->scratchParams;
+    pFlipParams = &pHsChannel->scratchParams;
 
-    nvkms_memset(pFlipHead, 0, sizeof(*pFlipHead));
+    nvkms_memset(pFlipParams, 0, sizeof(*pFlipParams));
 
-    pFlipHead->sd = sd;
-    pFlipHead->head = apiHead;
-    pParamsOneHead = &pFlipHead->flip;
+    pRequest = &pFlipParams->request;
+
+    pRequest->commit = NV_TRUE;
+
+    pParamsOneHead = &pRequest->sd[sd].head[apiHead];
 
     pParamsOneHead->layer[NVKMS_MAIN_LAYER].surface.specified = TRUE;
 
@@ -1934,13 +1936,12 @@ static void HsMainLayerFlip(
     pParamsOneHead->cursor.position = cursorPosition;
     pParamsOneHead->cursor.positionSpecified = TRUE;
 
+    pRequest->sd[sd].requestedHeadsBitMask = NVBIT(apiHead);
+
     ret = nvFlipEvo(pDevEvo,
                     pDevEvo->pNvKmsOpenDev,
-                    pFlipHead,
-                    1     /* numFlipHeads */,
-                    TRUE  /* commit */,
-                    FALSE /* allowVrr */,
-                    NULL  /* pReply */,
+                    pRequest,
+                    &pFlipParams->reply,
                     FALSE /* skipUpdate */,
                     FALSE /* allowFlipLock */);
 
@@ -2052,6 +2053,112 @@ static void HsConfigRestoreMainLayerSurface(
     }
 }
 
+
+/*!
+ * Wait for idle on a set of base channels.
+ *
+ * \param[in,out]  pDevEvo               The device.
+ * \param[in]      idleChannelMaskPerSd  The channel masks per subdevice that
+ *                                       we should wait to be idle.
+ * \param[in]      allowStopBase         Whether we should stop base or just
+ *                                       assert if the idle times out.
+ */
+static void HsConfigIdleBaseChannels(
+    NVDevEvoPtr pDevEvo,
+    const NVEvoChannelMask *idleChannelMaskPerSd,
+    NvBool allowStopBase)
+{
+    NvU64 startTime = 0;
+    NvBool allChannelsIdle = FALSE;
+    NVDispEvoPtr pDispEvo;
+    NvU32 dispIndex, head;
+    NVEvoChannelMask busyChannelMaskPerSd[NVKMS_MAX_SUBDEVICES] = { };
+
+    /*
+     * Wait up to 2 seconds for all channels to be idle, and gather a list of
+     * all busy channels.
+     */
+    while (!allChannelsIdle) {
+
+        const NvU32 timeout = 2000000; /* 2 seconds */
+        NvBool anyChannelBusy = FALSE;
+
+        FOR_ALL_EVO_DISPLAYS(pDispEvo, dispIndex, pDevEvo) {
+            for (head = 0; head < pDevEvo->numHeads; head++) {
+                NVEvoChannelPtr pMainLayerChannel =
+                    pDevEvo->head[head].layer[NVKMS_MAIN_LAYER];
+                if (idleChannelMaskPerSd[pDispEvo->displayOwner] &
+                    pMainLayerChannel->channelMask) {
+
+                    NvBool isMethodPending = FALSE;
+                    if (!pDevEvo->hal->IsChannelMethodPending(
+                            pDevEvo,
+                            pMainLayerChannel,
+                            pDispEvo->displayOwner,
+                            &isMethodPending)
+                        || isMethodPending) {
+
+                        /* Mark this channel as busy. */
+                        busyChannelMaskPerSd[pDispEvo->displayOwner] |=
+                            pMainLayerChannel->channelMask;
+                        anyChannelBusy = TRUE;
+                    } else {
+                        /*
+                         * Mark this channel as no longer busy, in case its
+                         * flip completed while we were waiting on another
+                         * channel.
+                         */
+                        busyChannelMaskPerSd[pDispEvo->displayOwner] &=
+                            ~pMainLayerChannel->channelMask;
+                    }
+                }
+            }
+        }
+
+        if (!anyChannelBusy) {
+            allChannelsIdle = TRUE;
+            break;
+        }
+
+        /* Break out of the loop if we exceed the timeout. */
+        if (nvExceedsTimeoutUSec(&startTime, timeout)) {
+            break;
+        }
+
+        nvkms_yield();
+    }
+
+    if (!allChannelsIdle) {
+        /*
+         * At least one channel was still idle after the 2 second timeout
+         * above.
+         */
+        if (!allowStopBase) {
+            /*
+             * The caller of this function expected this wait for idle not to
+             * time out.
+             */
+            nvEvoLogDev(pDevEvo, EVO_LOG_WARN,
+                        "Timeout while waiting for idle.");
+        } else {
+            /*
+             * Idle all base channels that were still busy when the wait above
+             * timed out.
+             */
+            NVEvoIdleChannelState idleChannelState = { };
+
+            FOR_ALL_EVO_DISPLAYS(pDispEvo, dispIndex, pDevEvo) {
+                idleChannelState.subdev[pDispEvo->displayOwner].channelMask =
+                    busyChannelMaskPerSd[pDispEvo->displayOwner];
+            }
+
+            pDevEvo->hal->ForceIdleSatelliteChannelIgnoreLock(
+                pDevEvo, &idleChannelState);
+        }
+    }
+}
+
+
 /*!
  * Enable or disable fliplock on all channels using headsurface for swapgroups,
  * waiting for idle if necessary.
@@ -2059,18 +2166,26 @@ static void HsConfigRestoreMainLayerSurface(
 static void HsConfigUpdateFlipLockForSwapGroups(NVDevEvoPtr pDevEvo,
                                                 NvBool enable)
 {
-    NvU32 dispIndex, apiHead;
+    NvU32 dispIndex, head;
     NVDispEvoPtr pDispEvo;
-    NvU32 flipLockToggleApiHeadMaskPerSd[NVKMS_MAX_SUBDEVICES] = { };
-    NvBool found = FALSE;
+    NVEvoChannelMask flipLockToggleChannelMaskPerSd[NVKMS_MAX_SUBDEVICES] = { };
 
+    /* Determine which channels need to enable or disable fliplock. */
     FOR_ALL_EVO_DISPLAYS(pDispEvo, dispIndex, pDevEvo) {
-        for (apiHead = 0; apiHead < pDevEvo->numApiHeads; apiHead++) {
+
+        for (head = 0; head < pDevEvo->numHeads; head++) {
+            const NvU32 apiHead = nvHardwareHeadToApiHead(head);
             NVHsChannelEvoPtr pHsChannel = pDispEvo->pHsChannel[apiHead];
 
             if (pHsChannel == NULL) {
                 continue;
             }
+
+            NVEvoSubDevPtr pEvoSubDev = &pDevEvo->gpus[pDispEvo->displayOwner];
+            NVEvoHeadControlPtr pHC = &pEvoSubDev->headControl[head];
+            NVEvoChannelPtr pMainLayerChannel =
+                pDevEvo->head[head].layer[NVKMS_MAIN_LAYER];
+            NvBool setFlipLock = FALSE;
 
             /*
              * This function is called in two cases, when disabling fliplock for
@@ -2084,17 +2199,82 @@ static void HsConfigUpdateFlipLockForSwapGroups(NVDevEvoPtr pDevEvo,
                 continue;
             }
 
-            flipLockToggleApiHeadMaskPerSd[pDispEvo->displayOwner] |=
-                NVBIT(apiHead);
-            found = TRUE;
+            if (!enable && pHC->flipLock) {
+                /*
+                 * This channel is currently using fliplock in the config that
+                 * is being torn down; idle its base channel and disable
+                 * fliplock.
+                 */
+                setFlipLock = TRUE;
+            }
+
+            if (enable && ((pHC->serverLock != NV_EVO_NO_LOCK) ||
+                           (pHC->clientLock != NV_EVO_NO_LOCK))) {
+                /*
+                 * This channel will be using fliplock for swap groups in the
+                 * new config; idle its base channel and enable fliplock.
+                 */
+
+                /*
+                 * Override the prohibition of fliplock on pDispEvos with
+                 * headsurface enabled (calculated earlier in
+                 * HsConfigAllowFlipLock) to allow enabling fliplock for
+                 * headSurface swapgroups.
+                 */
+                nvAllowFlipLockEvo(pDispEvo, TRUE /* allowFlipLock */);
+
+                nvAssert(!HEAD_MASK_QUERY(pEvoSubDev->flipLockProhibitedHeadMask,
+                                          head));
+                setFlipLock = TRUE;
+            }
+
+            if (!setFlipLock) {
+                continue;
+            }
+
+            flipLockToggleChannelMaskPerSd[pDispEvo->displayOwner] |=
+                pMainLayerChannel->channelMask;
         }
     }
 
-    if (!found) {
-        return;
-    }
+    /*
+     * Wait for all base channels that are enabling/disabling fliplock to be
+     * idle.  This shouldn't timeout if we're enabling fliplock while bringing
+     * up swapgroups on a new head.
+     */
+    HsConfigIdleBaseChannels(pDevEvo,
+                             flipLockToggleChannelMaskPerSd,
+                             !enable /* allowStopBase */);
 
-    nvApiHeadUpdateFlipLock(pDevEvo, flipLockToggleApiHeadMaskPerSd, enable);
+    /* Now that all channels are idle, update fliplock. */
+    FOR_ALL_EVO_DISPLAYS(pDispEvo, dispIndex, pDevEvo) {
+        NVEvoUpdateState updateState = { };
+
+        if (!flipLockToggleChannelMaskPerSd[pDispEvo->displayOwner]) {
+            continue;
+        }
+
+        for (head = 0; head < pDevEvo->numHeads; head++) {
+            NVEvoChannelPtr pMainLayerChannel =
+                pDevEvo->head[head].layer[NVKMS_MAIN_LAYER];
+            if (flipLockToggleChannelMaskPerSd[pDispEvo->displayOwner] &
+                pMainLayerChannel->channelMask) {
+
+                NvU32 setEnable = enable;
+
+                if (!nvUpdateFlipLockEvoOneHead(pDispEvo, head, &setEnable,
+                                                TRUE /* set */,
+                                                NULL /* needsEarlyUpdate */,
+                                                &updateState)) {
+                    nvEvoLogDev(pDevEvo, EVO_LOG_WARN,
+                        "Failed to toggle fliplock for swapgroups.");
+                }
+            }
+        }
+
+        nvEvoUpdateAndKickOff(pDispEvo, TRUE, &updateState,
+                              TRUE /* releaseElv */);
+    }
 }
 
 /*!
@@ -2118,7 +2298,7 @@ void nvHsConfigStop(
     NvU32 dispIndex, apiHead;
     NVDispEvoPtr pDispEvo;
     NVHsDeviceEvoPtr pHsDevice = pDevEvo->pHsDevice;
-    NvU32 hsDisableApiHeadMaskPerSd[NVKMS_MAX_SUBDEVICES] = { };
+    NVEvoChannelMask hsDisableChannelMaskPerSd[NVKMS_MAX_SUBDEVICES] = { };
 
     /*
      * We should only get here if this configuration is going to be committed.
@@ -2134,15 +2314,19 @@ void nvHsConfigStop(
 
     /* Flip all headSurface heads to NULL. */
     FOR_ALL_EVO_DISPLAYS(pDispEvo, dispIndex, pDevEvo) {
-        NvU32 apiHead;
-        for (apiHead = 0; apiHead < pDevEvo->numApiHeads; apiHead++) {
+        NvU32 head;
+        for (head = 0; head < pDevEvo->numHeads; head++) {
+            const NvU32 apiHead = nvHardwareHeadToApiHead(head);
             NVHsChannelEvoPtr pHsChannel = pDispEvo->pHsChannel[apiHead];
 
             if (pHsChannel != NULL) {
-                hsDisableApiHeadMaskPerSd[pDispEvo->displayOwner] |= NVBIT(apiHead);
+                NVEvoChannelPtr pMainLayerChannel =
+                    pDevEvo->head[head].layer[NVKMS_MAIN_LAYER];
+                hsDisableChannelMaskPerSd[pDispEvo->displayOwner] |=
+                    pMainLayerChannel->channelMask;
 
                 if (pHsChannel->config.pixelShift == NVKMS_PIXEL_SHIFT_8K) {
-                    nvSetStereo(pDispEvo, apiHead, FALSE);
+                    nvSetStereoEvo(pDispEvo, head, FALSE);
                 }
 
                 if (pHsChannel->config.neededForSwapGroup) {
@@ -2164,13 +2348,14 @@ void nvHsConfigStop(
     }
 
     /*
-     * Wait for main layer channels to be idle on all channels that previously
-     * had headSurface enabled in order to allow semaphore releases from
-     * previous headSurface flips to complete. This wait should not timeout,
-     * so if it does, just assert instead of forcing the channels idle.
+     * Wait for base to be idle on all channels that previously had headSurface
+     * enabled in order to allow semaphore releases from previous headSurface
+     * flips to complete.  This wait should not timeout, so if it does, just
+     * assert instead of forcing the channels idle.
      */
-    nvApiHeadIdleMainLayerChannels(pDevEvo,
-                                   hsDisableApiHeadMaskPerSd);
+    HsConfigIdleBaseChannels(pDevEvo,
+                             hsDisableChannelMaskPerSd,
+                             FALSE /* allowStopBase */);
 
     /* Update bookkeeping and restore the original surface in main layer. */
     FOR_ALL_EVO_DISPLAYS(pDispEvo, dispIndex, pDevEvo) {
@@ -2234,7 +2419,7 @@ void nvHsConfigStart(
     NVDevEvoPtr pDevEvo,
     NVHsConfig *pHsConfig)
 {
-    NvU32 dispIndex, apiHead;
+    NvU32 dispIndex, head;
     NVDispEvoPtr pDispEvo;
     NVHsDeviceEvoPtr pHsDevice = pDevEvo->pHsDevice;
     NvBool allowFlipLock;
@@ -2248,7 +2433,8 @@ void nvHsConfigStart(
 
     FOR_ALL_EVO_DISPLAYS(pDispEvo, dispIndex, pDevEvo) {
 
-        for (apiHead = 0; apiHead < pDevEvo->numApiHeads; apiHead++) {
+        for (head = 0; head < pDevEvo->numHeads; head++) {
+            const NvU32 apiHead = nvHardwareHeadToApiHead(head);
             NVHsConfigOneHead *pHsConfigOneHead =
                 &pHsConfig->apiHead[dispIndex][apiHead];
 
@@ -2310,8 +2496,9 @@ void nvHsConfigStart(
 
     /* Update surfaces. */
 
-    for (apiHead = 0; apiHead < pDevEvo->numApiHeads; apiHead++) {
+    for (head = 0; head < pDevEvo->numHeads; head++) {
 
+        const NvU32 apiHead = nvHardwareHeadToApiHead(head);
         NVHsStateOneHeadAllDisps *pDevEvoHsConfig =
             &pDevEvo->apiHeadSurfaceAllDisps[apiHead];
         NVHsStateOneHeadAllDisps *pHsOneHeadAllDisps =
@@ -2386,7 +2573,8 @@ void nvHsConfigStart(
 
     FOR_ALL_EVO_DISPLAYS(pDispEvo, dispIndex, pDevEvo) {
 
-        for (apiHead = 0; apiHead < pDevEvo->numApiHeads; apiHead++) {
+        for (head = 0; head < pDevEvo->numHeads; head++) {
+            const NvU32 apiHead = nvHardwareHeadToApiHead(head);
             NVHsChannelEvoPtr pHsChannel = pDispEvo->pHsChannel[apiHead];
             const NVHsConfigOneHead *pHsConfigOneHead =
                 &pHsConfig->apiHead[dispIndex][apiHead];
@@ -2441,7 +2629,7 @@ void nvHsConfigStart(
                               NV_HS_NEXT_FRAME_REQUEST_TYPE_FIRST_FRAME);
 
                 if (pHsChannel->config.pixelShift == NVKMS_PIXEL_SHIFT_8K) {
-                    nvSetStereo(pDispEvo, apiHead, TRUE);
+                    nvSetStereoEvo(pDispEvo, head, TRUE);
                 }
             }
         }

@@ -82,6 +82,10 @@ static void __nvoc_thunk_KernelMemorySystem_engstateStateDestroy(OBJGPU *pGpu, s
     kmemsysStateDestroy(pGpu, (struct KernelMemorySystem *)(((unsigned char *)pKernelMemorySystem) - __nvoc_rtti_KernelMemorySystem_OBJENGSTATE.offset));
 }
 
+static NV_STATUS __nvoc_thunk_OBJENGSTATE_kmemsysReconcileTunableState(POBJGPU pGpu, struct KernelMemorySystem *pEngstate, void *pTunableState) {
+    return engstateReconcileTunableState(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelMemorySystem_OBJENGSTATE.offset), pTunableState);
+}
+
 static NV_STATUS __nvoc_thunk_OBJENGSTATE_kmemsysStateLoad(POBJGPU pGpu, struct KernelMemorySystem *pEngstate, NvU32 arg0) {
     return engstateStateLoad(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelMemorySystem_OBJENGSTATE.offset), arg0);
 }
@@ -114,8 +118,28 @@ static NV_STATUS __nvoc_thunk_OBJENGSTATE_kmemsysStatePreInitUnlocked(POBJGPU pG
     return engstateStatePreInitUnlocked(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelMemorySystem_OBJENGSTATE.offset));
 }
 
+static NV_STATUS __nvoc_thunk_OBJENGSTATE_kmemsysGetTunableState(POBJGPU pGpu, struct KernelMemorySystem *pEngstate, void *pTunableState) {
+    return engstateGetTunableState(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelMemorySystem_OBJENGSTATE.offset), pTunableState);
+}
+
+static NV_STATUS __nvoc_thunk_OBJENGSTATE_kmemsysCompareTunableState(POBJGPU pGpu, struct KernelMemorySystem *pEngstate, void *pTunables1, void *pTunables2) {
+    return engstateCompareTunableState(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelMemorySystem_OBJENGSTATE.offset), pTunables1, pTunables2);
+}
+
+static void __nvoc_thunk_OBJENGSTATE_kmemsysFreeTunableState(POBJGPU pGpu, struct KernelMemorySystem *pEngstate, void *pTunableState) {
+    engstateFreeTunableState(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelMemorySystem_OBJENGSTATE.offset), pTunableState);
+}
+
 static NV_STATUS __nvoc_thunk_OBJENGSTATE_kmemsysStatePostLoad(POBJGPU pGpu, struct KernelMemorySystem *pEngstate, NvU32 arg0) {
     return engstateStatePostLoad(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelMemorySystem_OBJENGSTATE.offset), arg0);
+}
+
+static NV_STATUS __nvoc_thunk_OBJENGSTATE_kmemsysAllocTunableState(POBJGPU pGpu, struct KernelMemorySystem *pEngstate, void **ppTunableState) {
+    return engstateAllocTunableState(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelMemorySystem_OBJENGSTATE.offset), ppTunableState);
+}
+
+static NV_STATUS __nvoc_thunk_OBJENGSTATE_kmemsysSetTunableState(POBJGPU pGpu, struct KernelMemorySystem *pEngstate, void *pTunableState) {
+    return engstateSetTunableState(pGpu, (struct OBJENGSTATE *)(((unsigned char *)pEngstate) + __nvoc_rtti_KernelMemorySystem_OBJENGSTATE.offset), pTunableState);
 }
 
 static NvBool __nvoc_thunk_OBJENGSTATE_kmemsysIsPresent(POBJGPU pGpu, struct KernelMemorySystem *pEngstate) {
@@ -170,17 +194,6 @@ void __nvoc_init_dataField_KernelMemorySystem(KernelMemorySystem *pThis, RmHalsp
 
     // Hal field -- bPreserveComptagBackingStoreOnSuspend
     pThis->bPreserveComptagBackingStoreOnSuspend = ((NvBool)(0 != 0));
-
-    // Hal field -- bBug3656943WAR
-    if (( ((chipHal_HalVarIdx >> 5) == 1UL) && ((1UL << (chipHal_HalVarIdx & 0x1f)) & 0x10000000UL) )) /* ChipHal: GH100 */ 
-    {
-        pThis->bBug3656943WAR = ((NvBool)(0 == 0));
-    }
-    // default
-    else
-    {
-        pThis->bBug3656943WAR = ((NvBool)(0 != 0));
-    }
 }
 
 NV_STATUS __nvoc_ctor_OBJENGSTATE(OBJENGSTATE* );
@@ -391,6 +404,8 @@ static void __nvoc_init_funcTable_KernelMemorySystem_1(KernelMemorySystem *pThis
 
     pThis->__nvoc_base_OBJENGSTATE.__engstateStateDestroy__ = &__nvoc_thunk_KernelMemorySystem_engstateStateDestroy;
 
+    pThis->__kmemsysReconcileTunableState__ = &__nvoc_thunk_OBJENGSTATE_kmemsysReconcileTunableState;
+
     pThis->__kmemsysStateLoad__ = &__nvoc_thunk_OBJENGSTATE_kmemsysStateLoad;
 
     pThis->__kmemsysStateUnload__ = &__nvoc_thunk_OBJENGSTATE_kmemsysStateUnload;
@@ -407,7 +422,17 @@ static void __nvoc_init_funcTable_KernelMemorySystem_1(KernelMemorySystem *pThis
 
     pThis->__kmemsysStatePreInitUnlocked__ = &__nvoc_thunk_OBJENGSTATE_kmemsysStatePreInitUnlocked;
 
+    pThis->__kmemsysGetTunableState__ = &__nvoc_thunk_OBJENGSTATE_kmemsysGetTunableState;
+
+    pThis->__kmemsysCompareTunableState__ = &__nvoc_thunk_OBJENGSTATE_kmemsysCompareTunableState;
+
+    pThis->__kmemsysFreeTunableState__ = &__nvoc_thunk_OBJENGSTATE_kmemsysFreeTunableState;
+
     pThis->__kmemsysStatePostLoad__ = &__nvoc_thunk_OBJENGSTATE_kmemsysStatePostLoad;
+
+    pThis->__kmemsysAllocTunableState__ = &__nvoc_thunk_OBJENGSTATE_kmemsysAllocTunableState;
+
+    pThis->__kmemsysSetTunableState__ = &__nvoc_thunk_OBJENGSTATE_kmemsysSetTunableState;
 
     pThis->__kmemsysIsPresent__ = &__nvoc_thunk_OBJENGSTATE_kmemsysIsPresent;
 }
@@ -431,15 +456,12 @@ NV_STATUS __nvoc_objCreate_KernelMemorySystem(KernelMemorySystem **ppThis, Dynam
     KernelMemorySystem *pThis;
     RmHalspecOwner *pRmhalspecowner;
 
-    status = __nvoc_handleObjCreateMemAlloc(createFlags, sizeof(KernelMemorySystem), (void**)&pThis, (void**)ppThis);
-    if (status != NV_OK)
-        return status;
+    pThis = portMemAllocNonPaged(sizeof(KernelMemorySystem));
+    if (pThis == NULL) return NV_ERR_NO_MEMORY;
 
     portMemSet(pThis, 0, sizeof(KernelMemorySystem));
 
     __nvoc_initRtti(staticCast(pThis, Dynamic), &__nvoc_class_def_KernelMemorySystem);
-
-    pThis->__nvoc_base_OBJENGSTATE.__nvoc_base_Object.createFlags = createFlags;
 
     if (pParent != NULL && !(createFlags & NVOC_OBJ_CREATE_FLAGS_PARENT_HALSPEC_ONLY))
     {
@@ -460,17 +482,11 @@ NV_STATUS __nvoc_objCreate_KernelMemorySystem(KernelMemorySystem **ppThis, Dynam
     if (status != NV_OK) goto __nvoc_objCreate_KernelMemorySystem_cleanup;
 
     *ppThis = pThis;
-
     return NV_OK;
 
 __nvoc_objCreate_KernelMemorySystem_cleanup:
     // do not call destructors here since the constructor already called them
-    if (createFlags & NVOC_OBJ_CREATE_FLAGS_IN_PLACE_CONSTRUCT)
-        portMemSet(pThis, 0, sizeof(KernelMemorySystem));
-    else
-        portMemFree(pThis);
-
-    // coverity[leaked_storage:FALSE]
+    portMemFree(pThis);
     return status;
 }
 

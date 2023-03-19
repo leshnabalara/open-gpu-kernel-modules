@@ -36,7 +36,6 @@ vgpuMgrReserveSystemChannelIDs
     VGPU_TYPE *vgpuTypeInfo,
     NvU32 gfid,
     NvU32 *pChidOffset,
-    NvU32 *pChannelCount,
     NvHandle hClient,
     NvU32 numChannels,
     NvU32 engineFifoListNumEntries,
@@ -52,7 +51,6 @@ vgpuMgrFreeSystemChannelIDs
     OBJGPU *pGpu,
     NvU32 gfid,
     NvU32 *pChidOffset,
-    NvU32 *pChannelCount,
     NvHandle hClient,
     NvU32 engineFifoListNumEntries,
     FIFO_ENGINE_LIST *engineFifoList

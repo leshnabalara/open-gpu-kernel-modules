@@ -90,12 +90,8 @@ void __nvoc_init_dataField_OBJSYS(OBJSYS *pThis) {
     pThis->setProperty(pThis, PDB_PROP_SYS_IS_AGGRESSIVE_GC6_ENABLED, (0));
     pThis->setProperty(pThis, PDB_PROP_SYS_PRIORITY_BOOST, (0));
     pThis->setProperty(pThis, PDB_PROP_SYS_PRIORITY_THROTTLE_DELAY_US, 16 * 1000);
-    pThis->setProperty(pThis, PDB_PROP_SYS_CLIENT_HANDLE_LOOKUP, ((NvBool)(0 == 0)));
+    pThis->setProperty(pThis, PDB_PROP_SYS_CLIENT_HANDLE_LOOKUP, ((NvBool)(0 != 0)));
     pThis->setProperty(pThis, PDB_PROP_SYS_ROUTE_TO_PHYSICAL_LOCK_BYPASS, ((NvBool)(0 == 0)));
-
-    pThis->bUseDeferredClientListFree = ((NvBool)(0 != 0));
-
-    pThis->clientListDeferredFreeLimit = 0;
 }
 
 NV_STATUS __nvoc_ctor_Object(Object* );
@@ -148,15 +144,12 @@ NV_STATUS __nvoc_objCreate_OBJSYS(OBJSYS **ppThis, Dynamic *pParent, NvU32 creat
     Object *pParentObj;
     OBJSYS *pThis;
 
-    status = __nvoc_handleObjCreateMemAlloc(createFlags, sizeof(OBJSYS), (void**)&pThis, (void**)ppThis);
-    if (status != NV_OK)
-        return status;
+    pThis = portMemAllocNonPaged(sizeof(OBJSYS));
+    if (pThis == NULL) return NV_ERR_NO_MEMORY;
 
     portMemSet(pThis, 0, sizeof(OBJSYS));
 
     __nvoc_initRtti(staticCast(pThis, Dynamic), &__nvoc_class_def_OBJSYS);
-
-    pThis->__nvoc_base_Object.createFlags = createFlags;
 
     if (pParent != NULL && !(createFlags & NVOC_OBJ_CREATE_FLAGS_PARENT_HALSPEC_ONLY))
     {
@@ -173,17 +166,11 @@ NV_STATUS __nvoc_objCreate_OBJSYS(OBJSYS **ppThis, Dynamic *pParent, NvU32 creat
     if (status != NV_OK) goto __nvoc_objCreate_OBJSYS_cleanup;
 
     *ppThis = pThis;
-
     return NV_OK;
 
 __nvoc_objCreate_OBJSYS_cleanup:
     // do not call destructors here since the constructor already called them
-    if (createFlags & NVOC_OBJ_CREATE_FLAGS_IN_PLACE_CONSTRUCT)
-        portMemSet(pThis, 0, sizeof(OBJSYS));
-    else
-        portMemFree(pThis);
-
-    // coverity[leaked_storage:FALSE]
+    portMemFree(pThis);
     return status;
 }
 

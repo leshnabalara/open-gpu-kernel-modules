@@ -71,9 +71,8 @@ typedef struct DOD_METHOD_DATA
 typedef struct JT_METHOD_DATA
 {
     NV_STATUS status;
-    NvU32     jtCaps;
     NvU16     jtRevId;
-    NvBool    bSBIOSCaps;
+    NvU32     jtCaps;
 } JT_METHOD_DATA;
 
 typedef struct MUX_METHOD_DATA_ELEMENT

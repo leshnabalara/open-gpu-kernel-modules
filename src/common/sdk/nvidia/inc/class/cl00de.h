@@ -35,8 +35,6 @@ typedef struct NV00DE_SHARED_DATA {
 
     NvU32 bar1Size;
     NvU32 bar1AvailSize;
-
-    NvU32 gspAssertCount;
     // New data members always add to bottom
 } NV00DE_SHARED_DATA;
 

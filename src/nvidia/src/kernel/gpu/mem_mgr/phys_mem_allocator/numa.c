@@ -471,18 +471,17 @@ NV_STATUS pmaNumaAllocate
 )
 {
     NvU32    i;
-    NV_STATUS  status     = NV_OK;
-    NvU32    numaNodeId   = pPma->numaNodeId;
+    NV_STATUS  status    = NV_OK;
+    NvU32    numaNodeId  = pPma->numaNodeId;
     NvS32    regionList[PMA_REGION_SIZE];
-    NvU32    flags        = allocationOptions->flags;
-    NvLength allocSize    = 0;
-    NvLength allocCount   = 0;
-    NvU32    contigFlag   = !!(flags & PMA_ALLOCATE_CONTIGUOUS);
+    NvU32    flags       = allocationOptions->flags;
+    NvLength allocSize   = 0;
+    NvLength allocCount  = 0;
+    NvU32    contigFlag  = !!(flags & PMA_ALLOCATE_CONTIGUOUS);
     // As per bug #2444368, kernel scrubbing is too slow. Use the GPU scrubber instead
-    NvBool bScrubOnAlloc  = !(flags & PMA_ALLOCATE_NO_ZERO);
-    NvBool    allowEvict  = !(flags & PMA_ALLOCATE_DONT_EVICT);
-    NvBool   partialFlag  = !!(flags & PMA_ALLOCATE_ALLOW_PARTIAL);
-    NvBool bSkipScrubFlag = !!(flags & PMA_ALLOCATE_NO_ZERO);
+    NvBool bScrubOnAlloc = !(flags & PMA_ALLOCATE_NO_ZERO);
+    NvBool    allowEvict = !(flags & PMA_ALLOCATE_DONT_EVICT);
+    NvBool   partialFlag = !!(flags & PMA_ALLOCATE_ALLOW_PARTIAL);
 
     NvU64    finalAllocatedCount = 0;
 
@@ -518,13 +517,7 @@ NV_STATUS pmaNumaAllocate
     // We are not changing the state. Can be outside the lock perhaps
     NV_CHECK_OK_OR_RETURN(LEVEL_FATAL, pmaSelector(pPma, allocationOptions, regionList));
 
-    //
-    // Scrub on free is enabled for this allocation request if the feature is enabled and the
-    // caller does not want to skip scrubber.
-    // Caller may want to skip scrubber when it knows the memory is zero'ed or when we are
-    // initializing RM structures needed by the scrubber itself.
-    //  
-    if (pPma->bScrubOnFree && !bSkipScrubFlag)
+    if (pPma->bScrubOnFree)
     {
         portSyncMutexAcquire(pPma->pAllocLock);
         portSyncRwLockAcquireRead(pPma->pScrubberValidLock);
@@ -639,7 +632,7 @@ NV_STATUS pmaNumaAllocate
 
     portSyncSpinlockRelease(pPma->pPmaLock);
 
-    if (pPma->bScrubOnFree && !bSkipScrubFlag)
+    if (pPma->bScrubOnFree)
     {
         portSyncRwLockReleaseRead(pPma->pScrubberValidLock);
         portSyncMutexRelease(pPma->pAllocLock);

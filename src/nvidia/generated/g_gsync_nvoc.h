@@ -141,8 +141,6 @@ typedef NV_STATUS GsyncSetMosaic         (struct OBJGPU *, PDACEXTERNALDEVICE, N
 typedef NV_STATUS GsyncConfigFlashGsync  (struct OBJGPU *, PDACEXTERNALDEVICE, NvU32);
 typedef NV_STATUS GsyncGetHouseSyncMode  (struct OBJGPU *, PDACEXTERNALDEVICE, NvU8*);
 typedef NV_STATUS GsyncSetHouseSyncMode  (struct OBJGPU *, PDACEXTERNALDEVICE, NvU8);
-typedef NV_STATUS GsyncGetMulDiv         (struct OBJGPU *, DACEXTERNALDEVICE *, NV30F1_CTRL_GSYNC_MULTIPLY_DIVIDE_SETTINGS *);
-typedef NV_STATUS GsyncSetMulDiv         (struct OBJGPU *, DACEXTERNALDEVICE *, NV30F1_CTRL_GSYNC_MULTIPLY_DIVIDE_SETTINGS *);
 
 typedef struct GSYNC_HAL_IFACES {
 
@@ -178,8 +176,6 @@ typedef struct GSYNC_HAL_IFACES {
     GsyncConfigFlashGsync   *gsyncConfigFlashGsync;
     GsyncGetHouseSyncMode   *gsyncGetHouseSyncMode;
     GsyncSetHouseSyncMode   *gsyncSetHouseSyncMode;
-    GsyncGetMulDiv          *gsyncGetMulDiv;
-    GsyncSetMulDiv          *gsyncSetMulDiv;
 
 } GSYNC_HAL_IFACES;
 

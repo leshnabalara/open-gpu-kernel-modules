@@ -22,31 +22,32 @@
  */
 
 #include "os/os.h"
-#include "gpu/bif/kernel_bif.h"
+#include "gpu/pmu/kern_pmu.h"
 
 #include "published/ada/ad102/dev_bus.h"
 #include "published/ada/ad102/dev_bus_addendum.h"
 
-static NvBool _kbifPreOsCheckErotGrantAllowed_AD102(OBJGPU *pGpu, void *pVoid);
+static NvBool _kpmuPreOsCheckErotGrantAllowed_AD102(OBJGPU *pGpu, void *pVoid);
 
 /*!
  * Signals preOs to have eRoT hand over control of EEPROM to RM
  *
  * @param[in]     pGpu       OBJGPU pointer
- * @param[in]     pKernelBif KernelBif pointer
+ * @param[in]     pKernelPmu KernelPmu pointer
  *
  * @returns NV_OK if RM has control of the EEPROM
  * @returns NV_ERR_TIMEOUT if preOs fails to hand over control of the EEPROM
  *
  */
 NV_STATUS
-kbifPreOsGlobalErotGrantRequest_AD102
+kpmuPreOsGlobalErotGrantRequest_AD102
 (
     OBJGPU    *pGpu,
-    KernelBif *pKernelBif
+    KernelPmu *pKernelPmu
 )
 {
     NV_STATUS status = NV_OK;
+    RMTIMEOUT timeout;
     NvU32 reg = GPU_REG_RD32(pGpu, NV_PBUS_SW_GLOBAL_EROT_GRANT);
 
     // Invalid value suggests that there is no ERoT
@@ -56,7 +57,7 @@ kbifPreOsGlobalErotGrantRequest_AD102
     }
 
     // Check if grant has already been allowed
-    if (_kbifPreOsCheckErotGrantAllowed_AD102(pGpu, NULL))
+    if (_kpmuPreOsCheckErotGrantAllowed_AD102(pGpu, NULL))
     {
         return status;
     }
@@ -64,7 +65,8 @@ kbifPreOsGlobalErotGrantRequest_AD102
     reg = FLD_SET_DRF(_PBUS, _SW_GLOBAL_EROT_GRANT, _REQUEST, _SET, reg);
     GPU_REG_WR32(pGpu, NV_PBUS_SW_GLOBAL_EROT_GRANT, reg);
 
-    status = gpuTimeoutCondWait(pGpu, _kbifPreOsCheckErotGrantAllowed_AD102, NULL, NULL);
+    gpuSetTimeout(pGpu, GPU_TIMEOUT_DEFAULT, &timeout, 0);
+    status = gpuTimeoutCondWait(pGpu, _kpmuPreOsCheckErotGrantAllowed_AD102, NULL, &timeout);
     if (status != NV_OK)
     {
         NV_PRINTF(LEVEL_ERROR, "Timed out waiting for preOs to grant access to EEPROM\n");
@@ -74,7 +76,7 @@ kbifPreOsGlobalErotGrantRequest_AD102
 }
 
 static NvBool
-_kbifPreOsCheckErotGrantAllowed_AD102
+_kpmuPreOsCheckErotGrantAllowed_AD102
 (
     OBJGPU *pGpu,
     void   *pVoid

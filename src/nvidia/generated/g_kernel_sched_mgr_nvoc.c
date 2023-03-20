@@ -110,15 +110,12 @@ NV_STATUS __nvoc_objCreate_KernelSchedMgr(KernelSchedMgr **ppThis, Dynamic *pPar
     Object *pParentObj;
     KernelSchedMgr *pThis;
 
-    status = __nvoc_handleObjCreateMemAlloc(createFlags, sizeof(KernelSchedMgr), (void**)&pThis, (void**)ppThis);
-    if (status != NV_OK)
-        return status;
+    pThis = portMemAllocNonPaged(sizeof(KernelSchedMgr));
+    if (pThis == NULL) return NV_ERR_NO_MEMORY;
 
     portMemSet(pThis, 0, sizeof(KernelSchedMgr));
 
     __nvoc_initRtti(staticCast(pThis, Dynamic), &__nvoc_class_def_KernelSchedMgr);
-
-    pThis->__nvoc_base_Object.createFlags = createFlags;
 
     if (pParent != NULL && !(createFlags & NVOC_OBJ_CREATE_FLAGS_PARENT_HALSPEC_ONLY))
     {
@@ -135,17 +132,11 @@ NV_STATUS __nvoc_objCreate_KernelSchedMgr(KernelSchedMgr **ppThis, Dynamic *pPar
     if (status != NV_OK) goto __nvoc_objCreate_KernelSchedMgr_cleanup;
 
     *ppThis = pThis;
-
     return NV_OK;
 
 __nvoc_objCreate_KernelSchedMgr_cleanup:
     // do not call destructors here since the constructor already called them
-    if (createFlags & NVOC_OBJ_CREATE_FLAGS_IN_PLACE_CONSTRUCT)
-        portMemSet(pThis, 0, sizeof(KernelSchedMgr));
-    else
-        portMemFree(pThis);
-
-    // coverity[leaked_storage:FALSE]
+    portMemFree(pThis);
     return status;
 }
 

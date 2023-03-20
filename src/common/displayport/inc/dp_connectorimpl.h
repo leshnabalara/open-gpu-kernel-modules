@@ -299,6 +299,8 @@ namespace DisplayPort
         bool        bEnableFastLT;
         NvU32       maxLinkRateFromRegkey;
 
+        bool        bEnableOuiRestoring;
+
         //
         // Latency(ms) to apply between link-train and FEC enable for bug
         // 2561206.

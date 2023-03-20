@@ -159,7 +159,7 @@ typedef struct _NVHsChannelStatisticsOneEyeRec {
 
 typedef struct _NVHsChannelFlipQueueEntry {
     NVListRec flipQueueEntry;
-    NVHsLayerRequestedFlipState hwState;
+    NVFlipChannelEvoHwState hwState;
 } NVHsChannelFlipQueueEntry;
 
 typedef struct _NVHsChannelEvoRec {
@@ -184,11 +184,11 @@ typedef struct _NVHsChannelEvoRec {
     } nv2d;
 
     /*
-     * Flip request parameters are too large to declare on the stack.  We
-     * preallocate them here so that we don't have to allocate and free them on
-     * every headSurface flip.
+     * NvKmsFlipParams is too large to declare on the stack.  We preallocate it
+     * here so that we don't have to allocate and free it on every headSurface
+     * flip.
      */
-    struct NvKmsFlipRequestOneHead scratchParams;
+    struct NvKmsFlipParams scratchParams;
 
     /*
      * The index into NVDevEvoRec::apiHeadSurfaceAllDisps[apiHead]::surface[] to use
@@ -246,7 +246,7 @@ typedef struct _NVHsChannelEvoRec {
      */
 
     struct {
-        NVHsLayerRequestedFlipState current;
+        NVFlipChannelEvoHwState current;
         NVListRec queue;
     } flipQueue[NVKMS_MAX_LAYERS_PER_HEAD];
 
@@ -272,10 +272,10 @@ typedef struct _NVHsChannelEvoRec {
     NvBool usingRgIntrForSwapGroups;
 
     /*
-     * Pointer to the RG line interrupt callback object. This is needed to
+     * Handle to the RG line interrupt callback object. This is needed to
      * enabled and disable the RG interrupt callback.
      */
-    NVRgLine1CallbackPtr pRgIntrCallback;
+    NvU32 rgIntrCallbackObjectHandle;
 
 #if NVKMS_PROCFS_ENABLE
 
@@ -494,7 +494,7 @@ static inline void HsChangeSurfaceFlipRefCount(
 }
 
 /*!
- * Get the last NVHsLayerRequestedFlipState entry in the pHsChannel's flip queue for
+ * Get the last NVFlipChannelEvoHwState entry in the pHsChannel's flip queue for
  * the specified layer.
  *
  * If the flip queue is empty, return the 'current' entry.  Otherwise, return
@@ -502,7 +502,7 @@ static inline void HsChangeSurfaceFlipRefCount(
  *
  * This function cannot fail.
  */
-static inline const NVHsLayerRequestedFlipState *HsGetLastFlipQueueEntry(
+static inline const NVFlipChannelEvoHwState *HsGetLastFlipQueueEntry(
     const NVHsChannelEvoRec *pHsChannel,
     const NvU8 layer)
 {

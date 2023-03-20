@@ -62,6 +62,15 @@ static NV_STATUS _clientConstructResourceRef(RsClient *pClient, RsServer *pServe
                                              NvHandle hResource, NvU32 classId, RsResourceRef **ppResourceRef);
 
 /**
+ * Release all CPU address mappings for a resource
+ *
+ * @param[in] pClient Client that owns the resource
+ * @param[in] pCallContext Caller information (which includes the resource reference whose mappings will be freed)
+ * @param[in] pLockInfo Information about which locks are already held, for recursive calls
+ */
+static NV_STATUS _clientUnmapResourceRefMappings(RsClient *pClient, CALL_CONTEXT *pCallContext, RS_LOCK_INFO *pLockInfo);
+
+/**
  * Release all CPU address mappings that reference this resource
  *
  * @param[in] pClient Client that owns the resource
@@ -796,7 +805,7 @@ clientFreeResource_IMPL
     resPreDestruct(pResource);
 
     // Remove all CPU mappings
-    clientUnmapResourceRefMappings(pClient, &callContext, pParams->pLockInfo);
+    _clientUnmapResourceRefMappings(pClient, &callContext, pParams->pLockInfo);
     _clientUnmapBackRefMappings(pClient, &callContext, pParams->pLockInfo);
 
     // Remove all inter-mappings
@@ -1071,7 +1080,7 @@ clientDestructResourceRef_IMPL
 }
 
 NV_STATUS
-clientUnmapResourceRefMappings
+_clientUnmapResourceRefMappings
 (
     RsClient *pClient,
     CALL_CONTEXT *pCallContext,

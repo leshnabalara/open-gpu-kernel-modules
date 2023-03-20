@@ -117,6 +117,18 @@ static void __nvoc_init_funcTable_OBJENGSTATE_1(OBJENGSTATE *pThis) {
 
     pThis->__engstateStateDestroy__ = &engstateStateDestroy_IMPL;
 
+    pThis->__engstateAllocTunableState__ = &engstateAllocTunableState_IMPL;
+
+    pThis->__engstateFreeTunableState__ = &engstateFreeTunableState_IMPL;
+
+    pThis->__engstateGetTunableState__ = &engstateGetTunableState_IMPL;
+
+    pThis->__engstateSetTunableState__ = &engstateSetTunableState_IMPL;
+
+    pThis->__engstateReconcileTunableState__ = &engstateReconcileTunableState_IMPL;
+
+    pThis->__engstateCompareTunableState__ = &engstateCompareTunableState_IMPL;
+
     pThis->__engstateIsPresent__ = &engstateIsPresent_IMPL;
 }
 
@@ -137,15 +149,12 @@ NV_STATUS __nvoc_objCreate_OBJENGSTATE(OBJENGSTATE **ppThis, Dynamic *pParent, N
     Object *pParentObj;
     OBJENGSTATE *pThis;
 
-    status = __nvoc_handleObjCreateMemAlloc(createFlags, sizeof(OBJENGSTATE), (void**)&pThis, (void**)ppThis);
-    if (status != NV_OK)
-        return status;
+    pThis = portMemAllocNonPaged(sizeof(OBJENGSTATE));
+    if (pThis == NULL) return NV_ERR_NO_MEMORY;
 
     portMemSet(pThis, 0, sizeof(OBJENGSTATE));
 
     __nvoc_initRtti(staticCast(pThis, Dynamic), &__nvoc_class_def_OBJENGSTATE);
-
-    pThis->__nvoc_base_Object.createFlags = createFlags;
 
     if (pParent != NULL && !(createFlags & NVOC_OBJ_CREATE_FLAGS_PARENT_HALSPEC_ONLY))
     {
@@ -162,17 +171,11 @@ NV_STATUS __nvoc_objCreate_OBJENGSTATE(OBJENGSTATE **ppThis, Dynamic *pParent, N
     if (status != NV_OK) goto __nvoc_objCreate_OBJENGSTATE_cleanup;
 
     *ppThis = pThis;
-
     return NV_OK;
 
 __nvoc_objCreate_OBJENGSTATE_cleanup:
     // do not call destructors here since the constructor already called them
-    if (createFlags & NVOC_OBJ_CREATE_FLAGS_IN_PLACE_CONSTRUCT)
-        portMemSet(pThis, 0, sizeof(OBJENGSTATE));
-    else
-        portMemFree(pThis);
-
-    // coverity[leaked_storage:FALSE]
+    portMemFree(pThis);
     return status;
 }
 

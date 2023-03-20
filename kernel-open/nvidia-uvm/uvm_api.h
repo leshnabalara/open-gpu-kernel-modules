@@ -25,7 +25,6 @@
 #define __UVM_API_H__
 
 #include "uvm_types.h"
-#include "uvm_common.h"
 #include "uvm_ioctl.h"
 #include "uvm_linux.h"
 #include "uvm_lock.h"
@@ -52,10 +51,8 @@
                                                                                     \
         params.rmStatus = uvm_global_get_status();                                  \
         if (params.rmStatus == NV_OK) {                                             \
-            if (do_init_check) {                                                    \
-                if (!uvm_fd_va_space(filp))                                         \
-                    params.rmStatus = NV_ERR_ILLEGAL_ACTION;                        \
-            }                                                                       \
+            if (do_init_check)                                                      \
+                params.rmStatus = uvm_va_space_initialized(uvm_va_space_get(filp)); \
             if (likely(params.rmStatus == NV_OK))                                   \
                 params.rmStatus = function_name(&params, filp);                     \
         }                                                                           \
@@ -91,10 +88,8 @@
                                                                                         \
         params->rmStatus = uvm_global_get_status();                                     \
         if (params->rmStatus == NV_OK) {                                                \
-            if (do_init_check) {                                                        \
-                if (!uvm_fd_va_space(filp))                                             \
-                    params->rmStatus = NV_ERR_ILLEGAL_ACTION;                           \
-            }                                                                           \
+            if (do_init_check)                                                          \
+                params->rmStatus = uvm_va_space_initialized(uvm_va_space_get(filp));    \
             if (likely(params->rmStatus == NV_OK))                                      \
                 params->rmStatus = function_name(params, filp);                         \
         }                                                                               \

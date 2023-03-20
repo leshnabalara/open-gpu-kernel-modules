@@ -45,6 +45,7 @@ static NV_STATUS _Class5080DelDeferredApi(DeferredApiObject *pDeferredApiObject,
 
 static NV_STATUS _class5080DeferredApiV2(OBJGPU            *pGpu,
                                          ChannelDescendant *Object,
+                                         METHOD            *pMethod,
                                          NvU32              Offset,
                                          NvU32              Data);
 
@@ -468,6 +469,7 @@ _class5080DeferredApiV2
 (
     OBJGPU *pGpu,
     ChannelDescendant *Object,
+    METHOD *pMethod,
     NvU32 Offset,
     NvU32 Data
 )
@@ -700,7 +702,7 @@ cleanup:
     return rmStatus;
 }
 
-static const METHOD Nv50DeferredApi[] =
+static METHOD Nv50DeferredApi[] =
 {
     { mthdNoOperation,                  0x0100, 0x0103 },
     { _class5080DeferredApiV2,          0x0200, 0x0203 },
@@ -709,7 +711,7 @@ static const METHOD Nv50DeferredApi[] =
 NV_STATUS defapiGetSwMethods_IMPL
 (
     DeferredApiObject  *pDeferredApi,
-    const METHOD      **ppMethods,
+    METHOD            **ppMethods,
     NvU32              *pNumMethods
 )
 {

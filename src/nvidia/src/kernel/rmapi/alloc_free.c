@@ -31,7 +31,6 @@
 #include "gpu/disp/disp_objs.h"
 #include "gpu/disp/disp_channel.h"
 #include "nvsecurityinfo.h"
-#include "virtualization/hypervisor/hypervisor.h"
 
 #include "kernel/gpu/mig_mgr/kernel_mig_manager.h"
 
@@ -278,9 +277,6 @@ serverTopLock_Prologue
             NvU32 flags = RMAPI_LOCK_FLAGS_NONE;
             if (access == LOCK_ACCESS_READ)
                 flags |= RMAPI_LOCK_FLAGS_READ;
-
-            if (pLockInfo->flags & RS_LOCK_FLAGS_LOW_PRIORITY)
-                flags |= RMAPI_LOCK_FLAGS_LOW_PRIORITY;
 
             if ((status = rmapiLockAcquire(flags, RM_LOCK_MODULES_CLIENT)) != NV_OK)
             {
@@ -620,61 +616,6 @@ _fixupAllocParams
     return NV_OK;
 }
 
-static
-NV_STATUS
-_serverAllocValidatePrivilege
-(
-    RS_RESOURCE_DESC *pResDesc,
-    RS_RES_ALLOC_PARAMS *pParams
-)
-{
-    if (hypervisorIsVgxHyper())
-    {
-        // Host CPU-RM context
-        // Don't check here, allow it to pass to the inline constructor check.
-        // TODO: GPUSWSEC-1552 Hypervisor
-    }
-    else
-    {
-        RS_PRIV_LEVEL privLevel = pParams->pSecInfo->privLevel;
-
-        // Reject allocations for objects with no flags.
-        if (!(pResDesc->flags & RS_FLAGS_ALLOC_NON_PRIVILEGED) &&
-            !(pResDesc->flags & RS_FLAGS_ALLOC_PRIVILEGED) &&
-            !(pResDesc->flags & RS_FLAGS_ALLOC_KERNEL_PRIVILEGED))
-        {
-            // See GPUSWSEC-1560 for more details on privilege flag requirements
-            NV_PRINTF(LEVEL_WARNING, "external class 0x%08x is missing its privilege flag in RS_ENTRY\n", pParams->externalClassId);
-            return NV_ERR_INSUFFICIENT_PERMISSIONS;
-        }
-
-        // Default case, verify admin and kernel privileges
-        if (pResDesc->flags & RS_FLAGS_ALLOC_PRIVILEGED)
-        {
-            if (privLevel < RS_PRIV_LEVEL_USER_ROOT)
-            {
-                NV_PRINTF(LEVEL_WARNING,
-                          "hClient: 0x%08x, externalClassId: 0x%08x: non-privileged context tried to allocate privileged object\n",
-                          pParams->hClient, pParams->externalClassId);
-                return NV_ERR_INSUFFICIENT_PERMISSIONS;
-            }
-        }
-
-        if (pResDesc->flags & RS_FLAGS_ALLOC_KERNEL_PRIVILEGED)
-        {
-            if (privLevel < RS_PRIV_LEVEL_KERNEL)
-            {
-                NV_PRINTF(LEVEL_WARNING,
-                          "hClient: 0x%08x, externalClassId: 0x%08x: non-privileged context tried to allocate kernel privileged object\n",
-                          pParams->hClient, pParams->externalClassId);
-                return NV_ERR_INSUFFICIENT_PERMISSIONS;
-            }
-        }
-    }
-
-    return NV_OK;
-}
-
 NV_STATUS
 serverAllocResourceUnderLock
 (
@@ -714,10 +655,6 @@ serverAllocResourceUnderLock
 
     NV_ASSERT_OK_OR_RETURN(_fixupAllocParams(&pResDesc, pRmAllocParams));
     rmapiResourceDescToLegacyFlags(pResDesc, &pLockInfo->flags, NULL);
-
-    status = _serverAllocValidatePrivilege(pResDesc, pRmAllocParams);
-    if (status != NV_OK)
-        goto done;
 
     pLockInfo->traceOp = RS_LOCK_TRACE_ALLOC;
     pLockInfo->traceClassId = pRmAllocParams->externalClassId;
@@ -1455,7 +1392,7 @@ rmapiFreeWithSecInfoTls
 }
 
 NV_STATUS
-rmapiDisableClients
+rmapiFreeClientList
 (
     RM_API   *pRmApi,
     NvHandle *phClientList,
@@ -1465,11 +1402,11 @@ rmapiDisableClients
     if (!pRmApi->bHasDefaultSecInfo)
         return NV_ERR_NOT_SUPPORTED;
 
-    return pRmApi->DisableClientsWithSecInfo(pRmApi, phClientList, numClients, &pRmApi->defaultSecInfo);
+    return pRmApi->FreeClientListWithSecInfo(pRmApi, phClientList, numClients, &pRmApi->defaultSecInfo);
 }
 
 NV_STATUS
-rmapiDisableClientsWithSecInfo
+rmapiFreeClientListWithSecInfo
 (
     RM_API            *pRmApi,
     NvHandle          *phClientList,
@@ -1477,11 +1414,12 @@ rmapiDisableClientsWithSecInfo
     API_SECURITY_INFO *pSecInfo
 )
 {
+    NV_STATUS          status;
     OBJSYS            *pSys = SYS_GET_INSTANCE();
     NvU32              lockState = 0;
     NvU32              i;
 
-    NV_PRINTF(LEVEL_INFO, "numClients: %d\n", numClients);
+    NV_PRINTF(LEVEL_INFO, "Nv01FreeClientList: numClients: %d\n", numClients);
 
     if (!pRmApi->bRmSemaInternal && osAcquireRmSema(pSys->pSema) != NV_OK)
         return NV_ERR_INVALID_LOCK_STATE;
@@ -1495,18 +1433,27 @@ rmapiDisableClientsWithSecInfo
     for (i = 0; i < numClients; ++i)
         rmapiControlCacheFreeClientEntry(phClientList[i]);
 
-    serverMarkClientListDisabled(&g_resServ, phClientList, numClients, lockState, pSecInfo);
+    status = serverFreeClientList(&g_resServ, phClientList, numClients, lockState, pSecInfo);
 
     if (!pRmApi->bRmSemaInternal)
         osReleaseRmSema(pSys->pSema, NULL);
 
-    NV_PRINTF(LEVEL_INFO, "Disable clients complete\n");
+    if (status == NV_OK)
+    {
+        NV_PRINTF(LEVEL_INFO, "Nv01FreeClientList: free complete\n");
+    }
+    else
+    {
+        NV_PRINTF(LEVEL_WARNING,
+                  "Nv01FreeList: free failed; status: %s (0x%08x)\n",
+                  nvstatusToString(status), status);
+    }
 
-    return NV_OK;
+    return status;
 }
 
 NV_STATUS
-rmapiDisableClientsWithSecInfoTls
+rmapiFreeClientListWithSecInfoTls
 (
     RM_API              *pRmApi,
     NvHandle            *phClientList,
@@ -1519,7 +1466,7 @@ rmapiDisableClientsWithSecInfoTls
 
     threadStateInit(&threadState, THREAD_STATE_FLAGS_NONE);
 
-    status = rmapiDisableClientsWithSecInfo(pRmApi, phClientList, numClients, pSecInfo);
+    status = rmapiFreeClientListWithSecInfo(pRmApi, phClientList, numClients, pSecInfo);
 
     threadStateFree(&threadState, THREAD_STATE_FLAGS_NONE);
 

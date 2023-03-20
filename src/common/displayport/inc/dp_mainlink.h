@@ -101,6 +101,10 @@ namespace DisplayPort
 
     class MainLink : virtual public Object
     {
+    private:
+        virtual void initializeRegkeyDatabase() = 0;
+        virtual void applyRegkeyOverrides() = 0;
+
     public:
         virtual bool physicalLayerSetTestPattern(PatternInfo * patternInfo) = 0;
 

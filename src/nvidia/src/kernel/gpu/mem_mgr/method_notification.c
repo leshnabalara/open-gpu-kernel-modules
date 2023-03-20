@@ -551,7 +551,6 @@ NV_STATUS semaphoreFillGPUVATimestamp
 )
 {
     NvU64                 semaphoreGPUVA;
-    NvU64                 semaphoreGPUVAOffset;
     CLI_DMA_MAPPING_INFO *pDmaMappingInfo;
     NvU64                 offset;
     NvU32                 timeHi, timeLo;
@@ -571,11 +570,8 @@ NV_STATUS semaphoreFillGPUVATimestamp
     if (status != NV_OK)
         return status;
 
-    if (!portSafeMulU64((NvU64) Index,
-                        (NvU64) sizeof(NvGpuSemaphore),
-                        &semaphoreGPUVAOffset) ||
-        !portSafeAddU64(SemaphoreGPUVABase,
-                        semaphoreGPUVAOffset,
+    if (!portSafeAddU64(SemaphoreGPUVABase,
+                        (NvU64) (Index * sizeof(NvGpuSemaphore)),
                         &semaphoreGPUVA))
     {
         return NV_ERR_INVALID_ARGUMENT;

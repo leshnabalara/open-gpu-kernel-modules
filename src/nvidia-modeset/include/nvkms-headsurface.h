@@ -26,14 +26,6 @@
 
 #include "nvkms-types.h"
 
-typedef struct _NVHsLayerRequestedFlipStateRec {
-    NVSurfaceEvoPtr pSurfaceEvo[NVKMS_MAX_EYES];
-    NVFlipCompletionNotifierEvoHwState completionNotifier;
-    NVFlipSyncObjectEvoHwState syncObject;
-    NvBool perEyeStereoFlip;
-    NvU8 minPresentInterval;
-} NVHsLayerRequestedFlipState;
-
 NvU64 nvHsMapSurfaceToDevice(
     const NVDevEvoRec *pDevEvo,
     const NvU32 rmHandle,
@@ -69,7 +61,7 @@ void nvHsFreeChannel(NVHsChannelEvoPtr pHsChannel);
 void nvHsPushFlipQueueEntry(
     NVHsChannelEvoPtr pHsChannel,
     const NvU8 layer,
-    const NVHsLayerRequestedFlipState *pHwState);
+    const NVFlipChannelEvoHwState *pHwState);
 
 void nvHsDrainFlipQueue(
     NVHsChannelEvoPtr pHsChannel);
@@ -128,7 +120,7 @@ void nvHsProcFs(
     NVEvoInfoStringRec *pInfoString,
     NVDevEvoRec *pDevEvo,
     NvU32 dispIndex,
-    NvU32 apiHead);
+    NvU32 head);
 #endif
 
 #endif /* __NVKMS_HEADSURFACE_H__ */

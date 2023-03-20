@@ -237,7 +237,7 @@ NvBool stdmemCanCopy_IMPL(StandardMemory *pStandardMemory)
  * @returns
  *      The page size in bytes.
  */
-NvU64
+NvU32
 stdmemQueryPageSize
 (
     MemoryManager               *pMemoryManager,

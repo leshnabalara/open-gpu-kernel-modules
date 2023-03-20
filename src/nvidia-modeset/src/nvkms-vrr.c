@@ -126,7 +126,9 @@ void nvGetDpyMinRefreshRateValidValues(
     return;
 }
 
-void nvEnableVrr(NVDevEvoPtr pDevEvo)
+void nvEnableVrr(
+    NVDevEvoPtr pDevEvo,
+    const struct NvKmsSetModeRequest *pRequest)
 {
     return;
 }
@@ -171,7 +173,7 @@ void nvTriggerVrrUnstallMoveCursor(
 
 void nvTriggerVrrUnstallSetCursorImage(
     NVDispEvoPtr pDispEvo,
-    NvBool elvReleased)
+    NvBool ctxDmaChanged)
 {
     return;
 }

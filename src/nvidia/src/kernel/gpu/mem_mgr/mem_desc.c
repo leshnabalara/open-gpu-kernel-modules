@@ -261,7 +261,7 @@ memdescCreate
             }
         }
 
-        if (RMCFG_FEATURE_PLATFORM_MODS || IsT194(pGpu) || IsT234(pGpu))
+        if (RMCFG_FEATURE_PLATFORM_MODS || IsT194(pGpu))
         {
             if ( (AddressSpace == ADDR_FBMEM) &&
                 !(Flags & MEMDESC_ALLOC_FLAGS_PROTECTED) &&
@@ -2274,7 +2274,7 @@ memdescFillPages
     NvU32                pageIndex,
     NvU64               *pPages,
     NvU32                pageCount,
-    NvU64                pageSize
+    NvU32                pageSize
 )
 {
     NvU32 i, j, k;
@@ -2401,20 +2401,7 @@ memdescCreateSubMem
 
         pageOffset = memdescGetPhysAddr(pTempMemDesc, AT_CPU, Offset) &
                      (pTempMemDesc->_pageSize - 1);
-
-        // Check for integer overflow
-        if (!portSafeAddU64(pageOffset, Size, &tmpSize))
-        {
-            return NV_ERR_INVALID_ARGUMENT;
-        }
-
         tmpSize = RM_ALIGN_UP(pageOffset + Size, pTempMemDesc->_pageSize);
-
-        // Check for integer overflow
-        if (tmpSize < pageOffset + Size)
-        {
-            return NV_ERR_INVALID_ARGUMENT;
-        }
     }
 
     // Allocate the new MEMORY_DESCRIPTOR
@@ -3401,7 +3388,7 @@ void memdescPrintMemdesc
 NvU64 memdescGetPageOffset
 (
     MEMORY_DESCRIPTOR *pMemDesc,
-    NvU64 pageSize
+    NvU32 pageSize
 )
 {
     NV_ASSERT(!memdescHasSubDeviceMemDescs(pMemDesc));
@@ -3890,16 +3877,6 @@ NV_ADDRESS_SPACE memdescGetAddressSpace(PMEMORY_DESCRIPTOR pMemDesc)
  *
  *  @returns Current page size.
  */
-NvU64 memdescGetPageSize64
-(
-    PMEMORY_DESCRIPTOR  pMemDesc,
-    ADDRESS_TRANSLATION addressTranslation
-)
-{
-    NV_ASSERT(!memdescHasSubDeviceMemDescs(pMemDesc));
-    return pMemDesc->_pageSize;
-}
-
 NvU32 memdescGetPageSize
 (
     PMEMORY_DESCRIPTOR  pMemDesc,
@@ -3907,10 +3884,7 @@ NvU32 memdescGetPageSize
 )
 {
     NV_ASSERT(!memdescHasSubDeviceMemDescs(pMemDesc));
-    NV_ASSERT(pMemDesc->_pageSize <= NV_U32_MAX);
-    if (pMemDesc->_pageSize > NV_U32_MAX)
-        DBG_BREAKPOINT();
-    return (NvU32)pMemDesc->_pageSize;
+    return pMemDesc->_pageSize;
 }
 
 /*!
@@ -3926,7 +3900,7 @@ void memdescSetPageSize
 (
     PMEMORY_DESCRIPTOR  pMemDesc,
     ADDRESS_TRANSLATION addressTranslation,
-    NvU64               pageSize
+    NvU32               pageSize
 )
 {
     NV_ASSERT(!memdescHasSubDeviceMemDescs(pMemDesc));
@@ -4209,7 +4183,7 @@ void memdescCheckSubDevicePageSizeConsistency
 
     SLI_LOOP_START(SLI_LOOP_FLAGS_BC_ONLY)
        pTempMemDesc   = memdescGetMemDescFromGpu(pMemDesc, pGpu);
-       tempPageSize   = memdescGetPageSize64(pTempMemDesc, VAS_ADDRESS_TRANSLATION(pVAS));
+       tempPageSize   = memdescGetPageSize(pTempMemDesc, VAS_ADDRESS_TRANSLATION(pVAS));
        tempPageOffset = memdescGetPhysAddr(pTempMemDesc, VAS_ADDRESS_TRANSLATION(pVAS), 0) & (tempPageSize - 1);
 
        // Assert if inconsistent
@@ -4569,12 +4543,6 @@ memdescSendMemDescToGSP(OBJGPU *pGpu, MEMORY_DESCRIPTOR *pMemDesc, NvHandle *pHa
     NvU64                            *pageNumberList  = NULL;
     RM_API                           *pRmApi          = rmapiGetInterface(RMAPI_GPU_LOCK_INTERNAL);
     NV_MEMORY_LIST_ALLOCATION_PARAMS  listAllocParams = {0};
-
-    // Nothing to do without GSP
-    if (!IS_GSP_CLIENT(pGpu))
-    {
-        return NV_OK;
-    }
 
     switch (memdescGetAddressSpace(pMemDesc))
     {

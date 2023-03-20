@@ -116,12 +116,8 @@ static void __nvoc_thunk_RsResource_migconfigsessionAddAdditionalDependants(stru
     resAddAdditionalDependants(pClient, (struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_MIGConfigSession_RsResource.offset), pReference);
 }
 
-static NV_STATUS __nvoc_thunk_RsResource_migconfigsessionUnmapFrom(struct MIGConfigSession *pResource, RS_RES_UNMAP_FROM_PARAMS *pParams) {
-    return resUnmapFrom((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_MIGConfigSession_RsResource.offset), pParams);
-}
-
-static NV_STATUS __nvoc_thunk_RmResource_migconfigsessionControlSerialization_Prologue(struct MIGConfigSession *pResource, struct CALL_CONTEXT *pCallContext, struct RS_RES_CONTROL_PARAMS_INTERNAL *pParams) {
-    return rmresControlSerialization_Prologue((struct RmResource *)(((unsigned char *)pResource) + __nvoc_rtti_MIGConfigSession_RmResource.offset), pCallContext, pParams);
+static NV_STATUS __nvoc_thunk_RsResource_migconfigsessionUnmap(struct MIGConfigSession *pResource, struct CALL_CONTEXT *pCallContext, RsCpuMapping *pCpuMapping) {
+    return resUnmap((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_MIGConfigSession_RsResource.offset), pCallContext, pCpuMapping);
 }
 
 static NV_STATUS __nvoc_thunk_RmResource_migconfigsessionControl_Prologue(struct MIGConfigSession *pResource, struct CALL_CONTEXT *pCallContext, struct RS_RES_CONTROL_PARAMS_INTERNAL *pParams) {
@@ -132,24 +128,20 @@ static NvBool __nvoc_thunk_RsResource_migconfigsessionCanCopy(struct MIGConfigSe
     return resCanCopy((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_MIGConfigSession_RsResource.offset));
 }
 
-static NV_STATUS __nvoc_thunk_RsResource_migconfigsessionUnmap(struct MIGConfigSession *pResource, struct CALL_CONTEXT *pCallContext, RsCpuMapping *pCpuMapping) {
-    return resUnmap((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_MIGConfigSession_RsResource.offset), pCallContext, pCpuMapping);
+static NV_STATUS __nvoc_thunk_RsResource_migconfigsessionMapTo(struct MIGConfigSession *pResource, RS_RES_MAP_TO_PARAMS *pParams) {
+    return resMapTo((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_MIGConfigSession_RsResource.offset), pParams);
 }
 
 static void __nvoc_thunk_RsResource_migconfigsessionPreDestruct(struct MIGConfigSession *pResource) {
     resPreDestruct((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_MIGConfigSession_RsResource.offset));
 }
 
-static NV_STATUS __nvoc_thunk_RsResource_migconfigsessionMapTo(struct MIGConfigSession *pResource, RS_RES_MAP_TO_PARAMS *pParams) {
-    return resMapTo((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_MIGConfigSession_RsResource.offset), pParams);
+static NV_STATUS __nvoc_thunk_RsResource_migconfigsessionUnmapFrom(struct MIGConfigSession *pResource, RS_RES_UNMAP_FROM_PARAMS *pParams) {
+    return resUnmapFrom((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_MIGConfigSession_RsResource.offset), pParams);
 }
 
 static NV_STATUS __nvoc_thunk_RsResource_migconfigsessionIsDuplicate(struct MIGConfigSession *pResource, NvHandle hMemory, NvBool *pDuplicate) {
     return resIsDuplicate((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_MIGConfigSession_RsResource.offset), hMemory, pDuplicate);
-}
-
-static void __nvoc_thunk_RmResource_migconfigsessionControlSerialization_Epilogue(struct MIGConfigSession *pResource, struct CALL_CONTEXT *pCallContext, struct RS_RES_CONTROL_PARAMS_INTERNAL *pParams) {
-    rmresControlSerialization_Epilogue((struct RmResource *)(((unsigned char *)pResource) + __nvoc_rtti_MIGConfigSession_RmResource.offset), pCallContext, pParams);
 }
 
 static void __nvoc_thunk_RmResource_migconfigsessionControl_Epilogue(struct MIGConfigSession *pResource, struct CALL_CONTEXT *pCallContext, struct RS_RES_CONTROL_PARAMS_INTERNAL *pParams) {
@@ -223,23 +215,19 @@ static void __nvoc_init_funcTable_MIGConfigSession_1(MIGConfigSession *pThis) {
 
     pThis->__migconfigsessionAddAdditionalDependants__ = &__nvoc_thunk_RsResource_migconfigsessionAddAdditionalDependants;
 
-    pThis->__migconfigsessionUnmapFrom__ = &__nvoc_thunk_RsResource_migconfigsessionUnmapFrom;
-
-    pThis->__migconfigsessionControlSerialization_Prologue__ = &__nvoc_thunk_RmResource_migconfigsessionControlSerialization_Prologue;
+    pThis->__migconfigsessionUnmap__ = &__nvoc_thunk_RsResource_migconfigsessionUnmap;
 
     pThis->__migconfigsessionControl_Prologue__ = &__nvoc_thunk_RmResource_migconfigsessionControl_Prologue;
 
     pThis->__migconfigsessionCanCopy__ = &__nvoc_thunk_RsResource_migconfigsessionCanCopy;
 
-    pThis->__migconfigsessionUnmap__ = &__nvoc_thunk_RsResource_migconfigsessionUnmap;
+    pThis->__migconfigsessionMapTo__ = &__nvoc_thunk_RsResource_migconfigsessionMapTo;
 
     pThis->__migconfigsessionPreDestruct__ = &__nvoc_thunk_RsResource_migconfigsessionPreDestruct;
 
-    pThis->__migconfigsessionMapTo__ = &__nvoc_thunk_RsResource_migconfigsessionMapTo;
+    pThis->__migconfigsessionUnmapFrom__ = &__nvoc_thunk_RsResource_migconfigsessionUnmapFrom;
 
     pThis->__migconfigsessionIsDuplicate__ = &__nvoc_thunk_RsResource_migconfigsessionIsDuplicate;
-
-    pThis->__migconfigsessionControlSerialization_Epilogue__ = &__nvoc_thunk_RmResource_migconfigsessionControlSerialization_Epilogue;
 
     pThis->__migconfigsessionControl_Epilogue__ = &__nvoc_thunk_RmResource_migconfigsessionControl_Epilogue;
 
@@ -270,15 +258,12 @@ NV_STATUS __nvoc_objCreate_MIGConfigSession(MIGConfigSession **ppThis, Dynamic *
     Object *pParentObj;
     MIGConfigSession *pThis;
 
-    status = __nvoc_handleObjCreateMemAlloc(createFlags, sizeof(MIGConfigSession), (void**)&pThis, (void**)ppThis);
-    if (status != NV_OK)
-        return status;
+    pThis = portMemAllocNonPaged(sizeof(MIGConfigSession));
+    if (pThis == NULL) return NV_ERR_NO_MEMORY;
 
     portMemSet(pThis, 0, sizeof(MIGConfigSession));
 
     __nvoc_initRtti(staticCast(pThis, Dynamic), &__nvoc_class_def_MIGConfigSession);
-
-    pThis->__nvoc_base_RmResource.__nvoc_base_RsResource.__nvoc_base_Object.createFlags = createFlags;
 
     if (pParent != NULL && !(createFlags & NVOC_OBJ_CREATE_FLAGS_PARENT_HALSPEC_ONLY))
     {
@@ -295,17 +280,11 @@ NV_STATUS __nvoc_objCreate_MIGConfigSession(MIGConfigSession **ppThis, Dynamic *
     if (status != NV_OK) goto __nvoc_objCreate_MIGConfigSession_cleanup;
 
     *ppThis = pThis;
-
     return NV_OK;
 
 __nvoc_objCreate_MIGConfigSession_cleanup:
     // do not call destructors here since the constructor already called them
-    if (createFlags & NVOC_OBJ_CREATE_FLAGS_IN_PLACE_CONSTRUCT)
-        portMemSet(pThis, 0, sizeof(MIGConfigSession));
-    else
-        portMemFree(pThis);
-
-    // coverity[leaked_storage:FALSE]
+    portMemFree(pThis);
     return status;
 }
 

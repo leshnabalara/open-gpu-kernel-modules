@@ -223,7 +223,6 @@ namespace DisplayPort
                 : device(device), address(device.address), parent(parent), completed(false),
                   retriesRemoteDpcdWriteMessage(0), retryRemoteDpcdWriteMessage(false),
                   retriesRemoteDpcdReadMessage(0), retryRemoteDpcdReadMessage(false),
-                  retriesLinkAddressMessage(0), retryLinkAddressMessage(false),
                   bFromCSN(bFromCSN)
             {}
 

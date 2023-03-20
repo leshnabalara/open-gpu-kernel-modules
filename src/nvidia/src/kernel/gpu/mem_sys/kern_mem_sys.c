@@ -171,7 +171,6 @@ kmemsysDestruct_IMPL
     KernelMemorySystem *pKernelMemorySystem
 )
 {
-
     pKernelMemorySystem->sysmemFlushBuffer = 0;
     memdescFree(pKernelMemorySystem->pSysmemFlushBufferMemDesc);
     memdescDestroy(pKernelMemorySystem->pSysmemFlushBufferMemDesc);
@@ -583,42 +582,35 @@ kmemsysSetupCoherentCpuLink_IMPL
     NvU64          memblockSize   = 0;
     NvU64          numaOnlineBase = 0;
     NvU64          numaOnlineSize = 0;
-    NvU64          fbSize         = (pMemoryManager->Ram.fbTotalMemSizeMb << 20);
     NvU32          data32;
     NvBool         bCpuMapping    = NV_TRUE; // Default enable
-    NvS32          numaNodeId     = NV0000_CTRL_NO_NUMA_NODE;
 
     {
         NV_ASSERT_OK_OR_RETURN(kmemsysGetFbNumaInfo_HAL(pGpu, pKernelMemorySystem,
                                                         &pKernelMemorySystem->coherentCpuFbBase,
-                                                        &numaNodeId));
+                                                        &pGpu->numaNodeId));
         if (pKernelMemorySystem->coherentCpuFbBase != 0)
         {
-            {
-                RM_API *pRmApi = GPU_GET_PHYSICAL_RMAPI(pGpu);
-                NV2080_CTRL_INTERNAL_GET_COHERENT_FB_APERTURE_SIZE_PARAMS params = {0};
+            RM_API *pRmApi = GPU_GET_PHYSICAL_RMAPI(pGpu);
+            NV2080_CTRL_INTERNAL_GET_COHERENT_FB_APERTURE_SIZE_PARAMS params = {0};
 
-                NV_ASSERT_OK_OR_RETURN(pRmApi->Control(pRmApi,
-                                                       pGpu->hInternalClient,
-                                                       pGpu->hInternalSubdevice,
-                                                       NV2080_CTRL_CMD_INTERNAL_GET_COHERENT_FB_APERTURE_SIZE,
-                                                       &params,
-                                                       sizeof(NV2080_CTRL_INTERNAL_GET_COHERENT_FB_APERTURE_SIZE_PARAMS)));
-                //
-                // Indirect peer(uses P9 to reach other GV100) in P9+GV100 requires coherentCpuFbEnd to
-                // also include the entire FB AMAP range even when FB size is less than the FB AMAP size.
-                //
-                pKernelMemorySystem->coherentCpuFbEnd = pKernelMemorySystem->coherentCpuFbBase +
-                                                        params.coherentFbApertureSize;
-            }
+            NV_ASSERT_OK_OR_RETURN(pRmApi->Control(pRmApi,
+                    pGpu->hInternalClient,
+                    pGpu->hInternalSubdevice,
+                    NV2080_CTRL_CMD_INTERNAL_GET_COHERENT_FB_APERTURE_SIZE,
+                    &params,
+                    sizeof(NV2080_CTRL_INTERNAL_GET_COHERENT_FB_APERTURE_SIZE_PARAMS)));
+            pKernelMemorySystem->coherentCpuFbEnd = pKernelMemorySystem->coherentCpuFbBase +
+                                                    params.coherentFbApertureSize;
         }
     }
 
     if ((osReadRegistryDword(pGpu,
                              NV_REG_STR_OVERRIDE_GPU_NUMA_NODE_ID, &data32)) == NV_OK)
     {
-        numaNodeId = (NvS32)data32;
-        NV_PRINTF(LEVEL_ERROR, "Override GPU NUMA node ID %d!\n", numaNodeId);
+        pGpu->numaNodeId = (NvS32)data32;
+        NV_PRINTF(LEVEL_ERROR, "Override GPU NUMA node ID %d!\n",
+                  pGpu->numaNodeId);
     }
 
     // Parse regkey here
@@ -636,20 +628,6 @@ kmemsysSetupCoherentCpuLink_IMPL
     {
         return NV_OK;
     }
-
-    NV_ASSERT_OK_OR_RETURN(osNumaMemblockSize(&memblockSize));
-
-    //
-    // Online all of FB memory less the unaligned memblock chunk that also
-    // contains the RM reserved memory.
-    //
-    // TODO: make sure the onlineable memory is aligned to memblockSize
-    // Currently, if we have leftover memory, it'll just be wasted because no
-    // one can access it. If FB size itself is memblock size unaligned(because
-    // of CBC and row remapper deductions), then the memory wastage is unavoidable.
-    //
-    numaOnlineSize = NV_ALIGN_UP64(fbSize - memblockSize, memblockSize);
-    pGpu->numaNodeId = numaNodeId;
 
     NV_ASSERT_OK_OR_RETURN(kbusCreateCoherentCpuMapping_HAL(pGpu, pKernelBus, bFlush));
 
@@ -672,11 +650,13 @@ kmemsysSetupCoherentCpuLink_IMPL
         totalResvBytes += memmgrGetRsvdMemorySize(pMemoryManager);
 
         //
-        // Assumption: RM reserved memory fits within the last unaligned memblock
-        // size chunk and this assert check is to ensure the same.
+        // Online all of FB memory less reserved memory, aligned to memblock
         //
-        NV_ASSERT_OR_RETURN(totalResvBytes < (fbSize - numaOnlineSize), NV_ERR_INVALID_STATE);
-
+        // TODO: make sure the onlineable memory is aligned to memblockSize
+        // Currently, if we have leftover memory, it'll just be wasted because no
+        // one can access it
+        //
+        numaOnlineSize = NV_ALIGN_DOWN(pMemoryManager->Ram.fbUsableMemSize - totalResvBytes, memblockSize);
         NV_PRINTF(LEVEL_INFO, "NUMA reserved memory size: 0x%llx online memory size: 0x%llx\n",
                   totalResvBytes, numaOnlineSize);
 
@@ -748,4 +728,3 @@ kmemsysGetUsableFbSize_KERNEL
 {
     return kmemsysReadUsableFbSize_HAL(pGpu, pKernelMemorySystem, pFbSize);
 }
-

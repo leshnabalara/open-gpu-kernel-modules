@@ -49,7 +49,7 @@
 #undef RPC_MESSAGE_STRUCTURES
 #undef RPC_MESSAGE_GENERIC_UNION
 
-static void rpcRmApiSetup(OBJGPU *pGpu)
+void rpcRmApiSetup(OBJGPU *pGpu)
 {
     //
     // Physical RMAPI is already initialized for monolithic, and this function

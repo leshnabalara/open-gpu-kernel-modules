@@ -71,8 +71,8 @@ NV_STATUS tmrSetCurrentTime_GH100
 NV_STATUS
 tmrSetCountdown_GH100
 (
-    OBJGPU            *pGpu,
-    OBJTMR            *pTmr,
+    POBJGPU            pGpu,
+    POBJTMR            pTmr,
     NvU32              time,
     NvU32              tmrId,
     THREAD_STATE_NODE *pThreadState

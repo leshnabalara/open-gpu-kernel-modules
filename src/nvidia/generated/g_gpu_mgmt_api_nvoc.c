@@ -116,12 +116,8 @@ static void __nvoc_thunk_RsResource_gpumgmtapiAddAdditionalDependants(struct RsC
     resAddAdditionalDependants(pClient, (struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_GpuManagementApi_RsResource.offset), pReference);
 }
 
-static NV_STATUS __nvoc_thunk_RsResource_gpumgmtapiUnmapFrom(struct GpuManagementApi *pResource, RS_RES_UNMAP_FROM_PARAMS *pParams) {
-    return resUnmapFrom((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_GpuManagementApi_RsResource.offset), pParams);
-}
-
-static NV_STATUS __nvoc_thunk_RmResource_gpumgmtapiControlSerialization_Prologue(struct GpuManagementApi *pResource, struct CALL_CONTEXT *pCallContext, struct RS_RES_CONTROL_PARAMS_INTERNAL *pParams) {
-    return rmresControlSerialization_Prologue((struct RmResource *)(((unsigned char *)pResource) + __nvoc_rtti_GpuManagementApi_RmResource.offset), pCallContext, pParams);
+static NV_STATUS __nvoc_thunk_RsResource_gpumgmtapiUnmap(struct GpuManagementApi *pResource, struct CALL_CONTEXT *pCallContext, RsCpuMapping *pCpuMapping) {
+    return resUnmap((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_GpuManagementApi_RsResource.offset), pCallContext, pCpuMapping);
 }
 
 static NV_STATUS __nvoc_thunk_RmResource_gpumgmtapiControl_Prologue(struct GpuManagementApi *pResource, struct CALL_CONTEXT *pCallContext, struct RS_RES_CONTROL_PARAMS_INTERNAL *pParams) {
@@ -132,24 +128,20 @@ static NvBool __nvoc_thunk_RsResource_gpumgmtapiCanCopy(struct GpuManagementApi 
     return resCanCopy((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_GpuManagementApi_RsResource.offset));
 }
 
-static NV_STATUS __nvoc_thunk_RsResource_gpumgmtapiUnmap(struct GpuManagementApi *pResource, struct CALL_CONTEXT *pCallContext, RsCpuMapping *pCpuMapping) {
-    return resUnmap((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_GpuManagementApi_RsResource.offset), pCallContext, pCpuMapping);
+static NV_STATUS __nvoc_thunk_RsResource_gpumgmtapiMapTo(struct GpuManagementApi *pResource, RS_RES_MAP_TO_PARAMS *pParams) {
+    return resMapTo((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_GpuManagementApi_RsResource.offset), pParams);
 }
 
 static void __nvoc_thunk_RsResource_gpumgmtapiPreDestruct(struct GpuManagementApi *pResource) {
     resPreDestruct((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_GpuManagementApi_RsResource.offset));
 }
 
-static NV_STATUS __nvoc_thunk_RsResource_gpumgmtapiMapTo(struct GpuManagementApi *pResource, RS_RES_MAP_TO_PARAMS *pParams) {
-    return resMapTo((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_GpuManagementApi_RsResource.offset), pParams);
+static NV_STATUS __nvoc_thunk_RsResource_gpumgmtapiUnmapFrom(struct GpuManagementApi *pResource, RS_RES_UNMAP_FROM_PARAMS *pParams) {
+    return resUnmapFrom((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_GpuManagementApi_RsResource.offset), pParams);
 }
 
 static NV_STATUS __nvoc_thunk_RsResource_gpumgmtapiIsDuplicate(struct GpuManagementApi *pResource, NvHandle hMemory, NvBool *pDuplicate) {
     return resIsDuplicate((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_GpuManagementApi_RsResource.offset), hMemory, pDuplicate);
-}
-
-static void __nvoc_thunk_RmResource_gpumgmtapiControlSerialization_Epilogue(struct GpuManagementApi *pResource, struct CALL_CONTEXT *pCallContext, struct RS_RES_CONTROL_PARAMS_INTERNAL *pParams) {
-    rmresControlSerialization_Epilogue((struct RmResource *)(((unsigned char *)pResource) + __nvoc_rtti_GpuManagementApi_RmResource.offset), pCallContext, pParams);
 }
 
 static void __nvoc_thunk_RmResource_gpumgmtapiControl_Epilogue(struct GpuManagementApi *pResource, struct CALL_CONTEXT *pCallContext, struct RS_RES_CONTROL_PARAMS_INTERNAL *pParams) {
@@ -251,23 +243,19 @@ static void __nvoc_init_funcTable_GpuManagementApi_1(GpuManagementApi *pThis) {
 
     pThis->__gpumgmtapiAddAdditionalDependants__ = &__nvoc_thunk_RsResource_gpumgmtapiAddAdditionalDependants;
 
-    pThis->__gpumgmtapiUnmapFrom__ = &__nvoc_thunk_RsResource_gpumgmtapiUnmapFrom;
-
-    pThis->__gpumgmtapiControlSerialization_Prologue__ = &__nvoc_thunk_RmResource_gpumgmtapiControlSerialization_Prologue;
+    pThis->__gpumgmtapiUnmap__ = &__nvoc_thunk_RsResource_gpumgmtapiUnmap;
 
     pThis->__gpumgmtapiControl_Prologue__ = &__nvoc_thunk_RmResource_gpumgmtapiControl_Prologue;
 
     pThis->__gpumgmtapiCanCopy__ = &__nvoc_thunk_RsResource_gpumgmtapiCanCopy;
 
-    pThis->__gpumgmtapiUnmap__ = &__nvoc_thunk_RsResource_gpumgmtapiUnmap;
+    pThis->__gpumgmtapiMapTo__ = &__nvoc_thunk_RsResource_gpumgmtapiMapTo;
 
     pThis->__gpumgmtapiPreDestruct__ = &__nvoc_thunk_RsResource_gpumgmtapiPreDestruct;
 
-    pThis->__gpumgmtapiMapTo__ = &__nvoc_thunk_RsResource_gpumgmtapiMapTo;
+    pThis->__gpumgmtapiUnmapFrom__ = &__nvoc_thunk_RsResource_gpumgmtapiUnmapFrom;
 
     pThis->__gpumgmtapiIsDuplicate__ = &__nvoc_thunk_RsResource_gpumgmtapiIsDuplicate;
-
-    pThis->__gpumgmtapiControlSerialization_Epilogue__ = &__nvoc_thunk_RmResource_gpumgmtapiControlSerialization_Epilogue;
 
     pThis->__gpumgmtapiControl_Epilogue__ = &__nvoc_thunk_RmResource_gpumgmtapiControl_Epilogue;
 
@@ -298,15 +286,12 @@ NV_STATUS __nvoc_objCreate_GpuManagementApi(GpuManagementApi **ppThis, Dynamic *
     Object *pParentObj;
     GpuManagementApi *pThis;
 
-    status = __nvoc_handleObjCreateMemAlloc(createFlags, sizeof(GpuManagementApi), (void**)&pThis, (void**)ppThis);
-    if (status != NV_OK)
-        return status;
+    pThis = portMemAllocNonPaged(sizeof(GpuManagementApi));
+    if (pThis == NULL) return NV_ERR_NO_MEMORY;
 
     portMemSet(pThis, 0, sizeof(GpuManagementApi));
 
     __nvoc_initRtti(staticCast(pThis, Dynamic), &__nvoc_class_def_GpuManagementApi);
-
-    pThis->__nvoc_base_RmResource.__nvoc_base_RsResource.__nvoc_base_Object.createFlags = createFlags;
 
     if (pParent != NULL && !(createFlags & NVOC_OBJ_CREATE_FLAGS_PARENT_HALSPEC_ONLY))
     {
@@ -323,17 +308,11 @@ NV_STATUS __nvoc_objCreate_GpuManagementApi(GpuManagementApi **ppThis, Dynamic *
     if (status != NV_OK) goto __nvoc_objCreate_GpuManagementApi_cleanup;
 
     *ppThis = pThis;
-
     return NV_OK;
 
 __nvoc_objCreate_GpuManagementApi_cleanup:
     // do not call destructors here since the constructor already called them
-    if (createFlags & NVOC_OBJ_CREATE_FLAGS_IN_PLACE_CONSTRUCT)
-        portMemSet(pThis, 0, sizeof(GpuManagementApi));
-    else
-        portMemFree(pThis);
-
-    // coverity[leaked_storage:FALSE]
+    portMemFree(pThis);
     return status;
 }
 

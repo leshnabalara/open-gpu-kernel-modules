@@ -159,7 +159,7 @@ namespace DisplayPort
             splitterUpReply(hal, timer),
             mergerUpRequest(hal, timer, Address(0), this),
             mergerDownReply(hal, timer, Address(0), this),
-            isBeingDestroyed(false), isPaused(false)
+            isBeingDestroyed(false)
         {
         }
 

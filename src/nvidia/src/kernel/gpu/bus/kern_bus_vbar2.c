@@ -870,7 +870,7 @@ kbusMapBar2Aperture_SCRATCH
         return NULL;
     }
 
-    return portMemAllocNonPaged(pMemDesc->Size);
+    return portMemAllocNonPaged((NvU32)pMemDesc->Size);
 }
 
 /*!

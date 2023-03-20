@@ -65,21 +65,13 @@ static inline const NVT_EDID_CEA861_INFO *GetExt861(const NVParsedEdidEvoRec *pP
  */
 static void CalculateVideoInfoFrameColorFormat(
     const NVAttributesSetEvoRec *pAttributesSet,
-    enum NvKmsOutputTf tf,
     const NvU32 hdTimings,
     NVT_VIDEO_INFOFRAME_CTRL *pCtrl)
 {
-    /*
-     * If NVKMS_OUTPUT_TF_PQ is enabled, we expect the colorSpace is RGB.  This
-     * is enforced when the colorSpace is selected.
-     */
-    nvAssert((tf != NVKMS_OUTPUT_TF_PQ) ||
-             (pAttributesSet->colorSpace ==
-                NV_KMS_DPY_ATTRIBUTE_CURRENT_COLOR_SPACE_RGB));
-
     // sets video infoframe colorspace (RGB/YUV).
     switch (pAttributesSet->colorSpace) {
     case NV_KMS_DPY_ATTRIBUTE_CURRENT_COLOR_SPACE_RGB:
+    case NV_KMS_DPY_ATTRIBUTE_CURRENT_COLOR_SPACE_BT2020RGB:
         pCtrl->color_space = NVT_VIDEO_INFOFRAME_BYTE1_Y1Y0_RGB;
         break;
     case NV_KMS_DPY_ATTRIBUTE_CURRENT_COLOR_SPACE_YCbCr422:
@@ -99,11 +91,10 @@ static void CalculateVideoInfoFrameColorFormat(
     // sets video infoframe colorimetry.
     switch (pAttributesSet->colorSpace) {
     case NV_KMS_DPY_ATTRIBUTE_CURRENT_COLOR_SPACE_RGB:
-        if (tf == NVKMS_OUTPUT_TF_PQ) {
-            pCtrl->colorimetry = NVT_COLORIMETRY_BT2020RGB;
-        } else {
-            pCtrl->colorimetry = NVT_COLORIMETRY_RGB;
-        }
+        pCtrl->colorimetry = NVT_COLORIMETRY_RGB;
+        break;
+    case NV_KMS_DPY_ATTRIBUTE_CURRENT_COLOR_SPACE_BT2020RGB:
+        pCtrl->colorimetry = NVT_COLORIMETRY_BT2020RGB;
         break;
     case NV_KMS_DPY_ATTRIBUTE_CURRENT_COLOR_SPACE_YCbCr422:
     case NV_KMS_DPY_ATTRIBUTE_CURRENT_COLOR_SPACE_YCbCr444:
@@ -331,41 +322,6 @@ static void DisableVendorSpecificInfoFrame(
     }
 }
 
-/*!
- * Sends General Control Packet to the HDMI sink.
- */
-static void SendHdmiGcp(const NVDispEvoRec *pDispEvo,
-                        const NvU32 head, NvBool avmute)
-{
-    const NVDispHeadStateEvoRec *pHeadState = &pDispEvo->headState[head];
-    NVDevEvoPtr pDevEvo = pDispEvo->pDevEvo;
-    NVHDMIPKT_RESULT ret;
-
-    NvU8 sb0 = avmute ? HDMI_GENCTRL_PACKET_MUTE_ENABLE :
-        HDMI_GENCTRL_PACKET_MUTE_DISABLE;
-
-    NvU8 sb1 = 0;
-
-    NvU8 sb2 = NVT_HDMI_RESET_DEFAULT_PIXELPACKING_PHASE;
-
-    NvU8 gcp[] = {
-        pktType_GeneralControl, 0, 0, sb0, sb1, sb2, 0, 0, 0, 0
-    };
-
-    ret = NvHdmiPkt_PacketWrite(pDevEvo->hdmiLib.handle,
-                                pDispEvo->displayOwner,
-                                pHeadState->activeRmId,
-                                head,
-                                NVHDMIPKT_TYPE_GENERAL_CONTROL,
-                                NVHDMIPKT_TRANSMIT_CONTROL_ENABLE_EVERY_FRAME,
-                                sizeof(gcp),
-                                gcp);
-
-    if (ret != NVHDMIPKT_SUCCESS) {
-        nvAssert(ret == NVHDMIPKT_SUCCESS);
-    }
-}
-
 /*
  * SendInfoFrame() - Send infoframe to the hardware through the hdmipkt
  * library.
@@ -495,10 +451,7 @@ static void SendVideoInfoFrame(const NVDispEvoRec *pDispEvo,
     NVT_STATUS status;
 
 
-    CalculateVideoInfoFrameColorFormat(pAttributesSet,
-                                       pDispEvo->headState[head].tf,
-                                       hdTimings,
-                                       &videoCtrl);
+    CalculateVideoInfoFrameColorFormat(pAttributesSet, hdTimings, &videoCtrl);
 
     status = NvTiming_ConstructVideoInfoframe(pEdidInfo,
                                               &videoCtrl,
@@ -658,33 +611,6 @@ static void SetDpAudioEnable(const NVDispEvoRec *pDispEvo,
     /* Unmute audio stream after enabling it */
     if (enable) {
         SetDpAudioMute(pDispEvo, pHeadState->activeRmId, FALSE);
-    }
-}
-
-/*
- * Uses RM control to mute HDMI audio stream at source side.
- */
-static void SetHdmiAudioMute(const NVDispEvoRec *pDispEvo,
-                             const NvU32 head, const NvBool mute)
-{
-    NV0073_CTRL_CMD_SPECIFIC_SET_HDMI_AUDIO_MUTESTREAM_PARAMS params = { };
-    const NVDispHeadStateEvoRec *pHeadState = &pDispEvo->headState[head];
-    NVDevEvoPtr pDevEvo = pDispEvo->pDevEvo;
-    NvU32 ret;
-
-    params.subDeviceInstance = pDispEvo->displayOwner;
-    params.displayId = pHeadState->activeRmId;
-    params.mute = (mute ? NV0073_CTRL_SPECIFIC_SET_HDMI_AUDIO_MUTESTREAM_TRUE :
-        NV0073_CTRL_SPECIFIC_SET_HDMI_AUDIO_MUTESTREAM_FALSE);
-
-    ret = nvRmApiControl(nvEvoGlobal.clientHandle,
-                         pDevEvo->displayCommonHandle,
-                         NV0073_CTRL_CMD_SPECIFIC_SET_HDMI_AUDIO_MUTESTREAM,
-                         &params,
-                         sizeof(params));
-
-    if (ret != NVOS_STATUS_SUCCESS) {
-        nvAssert(!"NV0073_CTRL_CMD_SPECIFIC_SET_HDMI_AUDIO_MUTESTREAM failed");
     }
 }
 
@@ -1232,8 +1158,6 @@ void nvHdmiDpEnableDisableAudio(const NVDispEvoRec *pDispEvo,
 
     if (pHeadState->audio.isAudioOverHdmi) {
         EnableHdmiAudio(pDispEvo, head, enable);
-        SetHdmiAudioMute(pDispEvo, head, !enable /* mute */);
-        SendHdmiGcp(pDispEvo, head, !enable /* avmute */);
     }
 
     /* Populate ELD buffer after enabling audio */
@@ -1254,12 +1178,10 @@ void nvHdmiDpEnableDisableAudio(const NVDispEvoRec *pDispEvo,
 void nvDpyUpdateHdmiPreModesetEvo(NVDpyEvoPtr pDpyEvo)
 {
     if (!nvDpyIsHdmiEvo(pDpyEvo)) {
-        pDpyEvo->pConnectorEvo->isHdmiEnabled = FALSE;
         return;
     }
 
     HdmiSendEnable(pDpyEvo, TRUE);
-    pDpyEvo->pConnectorEvo->isHdmiEnabled = TRUE;
 }
 
 /*
@@ -2003,11 +1925,8 @@ NvBool nvHdmiDpySupportsFrl(const NVDpyEvoRec *pDpyEvo)
  * Returns TRUE if FRL is needed, or FALSE otherwise.
  * */
 static NvBool HdmiTimingsNeedFrl(const NVDpyEvoRec *pDpyEvo,
-                                 const NVHwModeTimingsEvo *pHwTimings)
+                                 const NvU32 pixelClock)
 {
-    const NvU32 pixelClock = (pHwTimings->yuv420Mode == NV_YUV420_MODE_HW) ?
-        (pHwTimings->pixelClock / 2) : pHwTimings->pixelClock;
-
     nvAssert(nvDpyIsHdmiEvo(pDpyEvo));
 
     /*
@@ -2032,7 +1951,7 @@ NvBool nvHdmiFrlQueryConfig(
     NVHDMIPKT_RESULT ret;
 
     if (!nvDpyIsHdmiEvo(pDpyEvo) ||
-        !HdmiTimingsNeedFrl(pDpyEvo, pHwTimings)) {
+        !HdmiTimingsNeedFrl(pDpyEvo, pHwTimings->pixelClock)) {
         return TRUE;
     }
 

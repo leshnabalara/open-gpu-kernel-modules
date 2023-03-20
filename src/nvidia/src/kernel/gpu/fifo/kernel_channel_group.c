@@ -147,9 +147,7 @@ kchangrpInit_IMPL
     }
 
     // Determine initial runlist for this TSG, using engine type if provided
-    pKernelChannelGroup->runlistId = kfifoGetDefaultRunlist_HAL(pGpu,
-        pKernelFifo,
-        pKernelChannelGroup->engineType);
+    pKernelChannelGroup->runlistId = kchangrpGetDefaultRunlist_HAL(pGpu, pKernelChannelGroup);
 
     if (kfifoIsPerRunlistChramEnabled(pKernelFifo))
     {

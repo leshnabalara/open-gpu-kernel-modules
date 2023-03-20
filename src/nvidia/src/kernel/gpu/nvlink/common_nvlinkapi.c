@@ -589,7 +589,6 @@ subdeviceCtrlCmdBusGetNvlinkStatus_IMPL
     NvBool bMIGNvLinkP2PSupported = ((pKernelMIGManager != NULL) &&
                                      kmigmgrIsMIGNvlinkP2PSupported(pGpu, pKernelMIGManager));
     NV_STATUS status = NV_OK;
-    NvBool    bIsNvlinkReady = NV_TRUE;
     NvU8 i = 0;
     struct
     {
@@ -697,16 +696,12 @@ subdeviceCtrlCmdBusGetNvlinkStatus_IMPL
             // as not ready
             //
             status = knvlinkCoreGetRemoteDeviceInfo(pGpu, pKernelNvlink);
-            if (status == NV_ERR_NOT_READY)
+            if (status != NV_OK)
             {
                 NV_PRINTF(LEVEL_INFO, "Nvlink is not ready yet!\n");
-                bIsNvlinkReady = NV_FALSE;
-            }
-            else if (status != NV_OK)
-            {
+                status = NV_ERR_NOT_READY;
                 goto done;
             }
-
         }
 
         //
@@ -716,8 +711,7 @@ subdeviceCtrlCmdBusGetNvlinkStatus_IMPL
         //
         knvlinkFilterBridgeLinks_HAL(pGpu, pKernelNvlink);
 
-        // If nvlink is not ready don't report back any links as being enabled
-        pParams->enabledLinkMask = (bIsNvlinkReady) ? pKernelNvlink->enabledLinks : 0x0;
+        pParams->enabledLinkMask = pKernelNvlink->enabledLinks;
 
         pTmpData->nvlinkLinkAndClockInfoParams.linkMask = pParams->enabledLinkMask;
         pTmpData->nvlinkLinkAndClockInfoParams.bSublinkStateInst = pParams->bSublinkStateInst;

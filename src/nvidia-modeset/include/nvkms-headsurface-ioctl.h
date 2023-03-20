@@ -42,10 +42,7 @@ NvBool nvHsIoctlSetCursorImage(
 NvBool nvHsIoctlFlip(
     NVDevEvoPtr pDevEvo,
     const struct NvKmsPerOpenDev *pOpenDev,
-    const struct NvKmsFlipRequestOneHead *pFlipHead,
-    NvU32 numFlipHeads,
-    NvBool commit,
-    NvBool allowVrr,
+    const struct NvKmsFlipRequest *pRequest,
     struct NvKmsFlipReply *pReply);
 
 #endif /* __NVKMS_HEADSURFACE_IOCTL_H__ */

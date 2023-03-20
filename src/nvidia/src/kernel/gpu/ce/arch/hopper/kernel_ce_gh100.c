@@ -115,12 +115,6 @@ _ceGetAlgorithmPceIndex
     NvU8 pHshubIdRequested;
     NvU32 i;
 
-    if ((pceIndex != NULL) && *pceIndex >= kceGetPce2lceConfigSize1_HAL(pKCe))
-    {
-        NV_PRINTF(LEVEL_ERROR, "Invalid PCE request. pceIndex = %d pceCnt = %d\n", *pceIndex, kceGetPce2lceConfigSize1_HAL(pKCe));
-        return;
-    }
-
     if (!(NVBIT32(*pceIndex) & pceAvailableMaskPerHshub[*pHshubId]))
     {
         //
@@ -207,11 +201,8 @@ kceMapPceLceForC2C_GH100
             for (i = 0; i < selectPcePerHshub; i++)
             {
                 pceIndex = CE_GET_LOWEST_AVAILABLE_IDX(pceAvailableMaskPerHshub[hshubId]);
-                if (pceIndex < kceGetPce2lceConfigSize1_HAL(pKCe))
-                {
-                    pceAvailableMaskPerHshub[hshubId] &= (~(NVBIT32(pceIndex)));
-                    pLocalPceLceMap[pceIndex] = lceIndex;
-                }
+                pceAvailableMaskPerHshub[hshubId] &= (~(NVBIT32(pceIndex)));
+                pLocalPceLceMap[pceIndex] = lceIndex;
             }
         }
 
@@ -224,11 +215,8 @@ kceMapPceLceForC2C_GH100
             for (i = 0; i < selectPcePerHshub; i++)
             {
                 pceIndex = CE_GET_LOWEST_AVAILABLE_IDX(pceAvailableMaskPerHshub[hshubId]);
-                if (pceIndex < kceGetPce2lceConfigSize1_HAL(pKCe))
-                {
-                    pceAvailableMaskPerHshub[hshubId] &= (~(NVBIT32(pceIndex)));
-                    pLocalPceLceMap[pceIndex] = lceIndex;
-                }
+                pceAvailableMaskPerHshub[hshubId] &= (~(NVBIT32(pceIndex)));
+                pLocalPceLceMap[pceIndex] = lceIndex;
             }
         }
     }
@@ -484,8 +472,6 @@ kceMapPceLceForNvlinkPeers_GH100
    {
         NvU32 numLinksToPeer = knvlinkGetNumLinksToPeer(pGpu, pKernelNvlink,
                                                        pRemoteGpu);
-        NvU32 maxLceCnt = NV_CE_MAX_LCE_MASK;
-
         if (numLinksToPeer == 0)
         {
             continue;
@@ -508,15 +494,12 @@ kceMapPceLceForNvlinkPeers_GH100
 
         // Each peer gets 1 LCE
         lceIndex = CE_GET_LOWEST_AVAILABLE_IDX(peerAvailableLceMask);
-        HIGHESTBITIDX_32(maxLceCnt);
-        if (lceIndex < maxLceCnt)
-        {
-            lceMask |= NVBIT32(lceIndex);
-            // Clear out the chosen LCE
-            peerAvailableLceMask &= (~(NVBIT32(lceIndex)));
-        }
+        lceMask |= NVBIT32(lceIndex);
 
         pKCe->nvlinkNumPeers++;
+
+        // Clear out the chosen LCE
+        peerAvailableLceMask &= (~(NVBIT32(lceIndex)));
 
         peerLinkMask = knvlinkGetLinkMaskToPeer(pGpu, pKernelNvlink, pRemoteGpu);
         if (peerLinkMask == 0)
@@ -632,7 +615,6 @@ kceMapAsyncLceDefault_GH100
     NvU32 lceMask = 0;
     NvU32 pceMask = 0;
     NvU32 lceIndex, pceIndex, hshubId, i;
-    NvU32 maxLceCnt = NV_CE_MAX_LCE_MASK;
 
     peerAvailableLceMask = kceGetNvlinkPeerSupportedLceMask_HAL(pGpu, pKCe, peerAvailableLceMask);
     hshubId = 1;
@@ -644,13 +626,9 @@ kceMapAsyncLceDefault_GH100
     // Reference bug 3042556
     //
     lceIndex = CE_GET_LOWEST_AVAILABLE_IDX(peerAvailableLceMask);
-    HIGHESTBITIDX_32(maxLceCnt);
-    if (lceIndex < maxLceCnt)
-    {
-        lceMask |= NVBIT32(lceIndex);
-        // Clear out the chosen LCE
-        peerAvailableLceMask &= (~(NVBIT32(lceIndex)));
-    }
+    lceMask |= NVBIT32(lceIndex);
+    // Clear out the chosen LCE
+    peerAvailableLceMask &= (~(NVBIT32(lceIndex)));
 
     // Assign PCEs to this LCE based on input request
     for (i = 0; i < numDefaultPces; i++)
@@ -659,11 +637,8 @@ kceMapAsyncLceDefault_GH100
             hshubId++;
 
         pceIndex = CE_GET_LOWEST_AVAILABLE_IDX(pceAvailableMaskPerHshub[hshubId]);
-        if (pceIndex < kceGetPce2lceConfigSize1_HAL(pKCe))
-        {
-            pceMask |= NVBIT32(pceIndex);
-            pceAvailableMaskPerHshub[hshubId] &= (~(NVBIT32(pceIndex)));
-        }
+        pceMask |= NVBIT32(pceIndex);
+        pceAvailableMaskPerHshub[hshubId] &= (~(NVBIT32(pceIndex)));
     }
 
     FOR_EACH_INDEX_IN_MASK(32, pceIndex, pceMask)

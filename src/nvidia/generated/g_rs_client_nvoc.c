@@ -136,15 +136,12 @@ NV_STATUS __nvoc_objCreate_RsClient(RsClient **ppThis, Dynamic *pParent, NvU32 c
     Object *pParentObj;
     RsClient *pThis;
 
-    status = __nvoc_handleObjCreateMemAlloc(createFlags, sizeof(RsClient), (void**)&pThis, (void**)ppThis);
-    if (status != NV_OK)
-        return status;
+    pThis = portMemAllocNonPaged(sizeof(RsClient));
+    if (pThis == NULL) return NV_ERR_NO_MEMORY;
 
     portMemSet(pThis, 0, sizeof(RsClient));
 
     __nvoc_initRtti(staticCast(pThis, Dynamic), &__nvoc_class_def_RsClient);
-
-    pThis->__nvoc_base_Object.createFlags = createFlags;
 
     if (pParent != NULL && !(createFlags & NVOC_OBJ_CREATE_FLAGS_PARENT_HALSPEC_ONLY))
     {
@@ -161,17 +158,11 @@ NV_STATUS __nvoc_objCreate_RsClient(RsClient **ppThis, Dynamic *pParent, NvU32 c
     if (status != NV_OK) goto __nvoc_objCreate_RsClient_cleanup;
 
     *ppThis = pThis;
-
     return NV_OK;
 
 __nvoc_objCreate_RsClient_cleanup:
     // do not call destructors here since the constructor already called them
-    if (createFlags & NVOC_OBJ_CREATE_FLAGS_IN_PLACE_CONSTRUCT)
-        portMemSet(pThis, 0, sizeof(RsClient));
-    else
-        portMemFree(pThis);
-
-    // coverity[leaked_storage:FALSE]
+    portMemFree(pThis);
     return status;
 }
 
@@ -272,10 +263,6 @@ static void __nvoc_thunk_RsResource_clientresAddAdditionalDependants(struct RsCl
     resAddAdditionalDependants(pClient, (struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_RsClientResource_RsResource.offset), pReference);
 }
 
-static NV_STATUS __nvoc_thunk_RsResource_clientresControlSerialization_Prologue(struct RsClientResource *pResource, struct CALL_CONTEXT *pCallContext, struct RS_RES_CONTROL_PARAMS_INTERNAL *pParams) {
-    return resControlSerialization_Prologue((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_RsClientResource_RsResource.offset), pCallContext, pParams);
-}
-
 static NvBool __nvoc_thunk_RsResource_clientresCanCopy(struct RsClientResource *pResource) {
     return resCanCopy((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_RsClientResource_RsResource.offset));
 }
@@ -294,10 +281,6 @@ static NV_STATUS __nvoc_thunk_RsResource_clientresUnmapFrom(struct RsClientResou
 
 static NV_STATUS __nvoc_thunk_RsResource_clientresIsDuplicate(struct RsClientResource *pResource, NvHandle hMemory, NvBool *pDuplicate) {
     return resIsDuplicate((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_RsClientResource_RsResource.offset), hMemory, pDuplicate);
-}
-
-static void __nvoc_thunk_RsResource_clientresControlSerialization_Epilogue(struct RsClientResource *pResource, struct CALL_CONTEXT *pCallContext, struct RS_RES_CONTROL_PARAMS_INTERNAL *pParams) {
-    resControlSerialization_Epilogue((struct RsResource *)(((unsigned char *)pResource) + __nvoc_rtti_RsClientResource_RsResource.offset), pCallContext, pParams);
 }
 
 static void __nvoc_thunk_RsResource_clientresControl_Epilogue(struct RsClientResource *pResource, struct CALL_CONTEXT *pCallContext, struct RS_RES_CONTROL_PARAMS_INTERNAL *pParams) {
@@ -369,8 +352,6 @@ static void __nvoc_init_funcTable_RsClientResource_1(RsClientResource *pThis) {
 
     pThis->__clientresAddAdditionalDependants__ = &__nvoc_thunk_RsResource_clientresAddAdditionalDependants;
 
-    pThis->__clientresControlSerialization_Prologue__ = &__nvoc_thunk_RsResource_clientresControlSerialization_Prologue;
-
     pThis->__clientresCanCopy__ = &__nvoc_thunk_RsResource_clientresCanCopy;
 
     pThis->__clientresControl_Prologue__ = &__nvoc_thunk_RsResource_clientresControl_Prologue;
@@ -380,8 +361,6 @@ static void __nvoc_init_funcTable_RsClientResource_1(RsClientResource *pThis) {
     pThis->__clientresUnmapFrom__ = &__nvoc_thunk_RsResource_clientresUnmapFrom;
 
     pThis->__clientresIsDuplicate__ = &__nvoc_thunk_RsResource_clientresIsDuplicate;
-
-    pThis->__clientresControlSerialization_Epilogue__ = &__nvoc_thunk_RsResource_clientresControlSerialization_Epilogue;
 
     pThis->__clientresControl_Epilogue__ = &__nvoc_thunk_RsResource_clientresControl_Epilogue;
 
@@ -410,15 +389,12 @@ NV_STATUS __nvoc_objCreate_RsClientResource(RsClientResource **ppThis, Dynamic *
     Object *pParentObj;
     RsClientResource *pThis;
 
-    status = __nvoc_handleObjCreateMemAlloc(createFlags, sizeof(RsClientResource), (void**)&pThis, (void**)ppThis);
-    if (status != NV_OK)
-        return status;
+    pThis = portMemAllocNonPaged(sizeof(RsClientResource));
+    if (pThis == NULL) return NV_ERR_NO_MEMORY;
 
     portMemSet(pThis, 0, sizeof(RsClientResource));
 
     __nvoc_initRtti(staticCast(pThis, Dynamic), &__nvoc_class_def_RsClientResource);
-
-    pThis->__nvoc_base_RsResource.__nvoc_base_Object.createFlags = createFlags;
 
     if (pParent != NULL && !(createFlags & NVOC_OBJ_CREATE_FLAGS_PARENT_HALSPEC_ONLY))
     {
@@ -435,17 +411,11 @@ NV_STATUS __nvoc_objCreate_RsClientResource(RsClientResource **ppThis, Dynamic *
     if (status != NV_OK) goto __nvoc_objCreate_RsClientResource_cleanup;
 
     *ppThis = pThis;
-
     return NV_OK;
 
 __nvoc_objCreate_RsClientResource_cleanup:
     // do not call destructors here since the constructor already called them
-    if (createFlags & NVOC_OBJ_CREATE_FLAGS_IN_PLACE_CONSTRUCT)
-        portMemSet(pThis, 0, sizeof(RsClientResource));
-    else
-        portMemFree(pThis);
-
-    // coverity[leaked_storage:FALSE]
+    portMemFree(pThis);
     return status;
 }
 

@@ -80,7 +80,7 @@ knvlinkCoreGetRemoteDeviceInfo_IMPL
     NvBool  bNvswitchProxyPresent = NV_FALSE;
     NvBool  bUpdateConnStatus     = NV_FALSE;
     NvBool  bCheckDegradedMode    = NV_FALSE;
-    nvlink_conn_info conn_info    = {0};
+    nvlink_conn_info conn_info;
     NvU32   linkId;
     NvU32     numActiveLinksPerIoctrl = 0;
     NvU32     numLinksPerIoctrl       = 0;
@@ -109,11 +109,18 @@ knvlinkCoreGetRemoteDeviceInfo_IMPL
         if (pKernelNvlink->ipVerNvlink >= NVLINK_VERSION_40                     &&
             !bNvswitchProxyPresent                                              &&
             !pSys->getProperty(pSys, PDB_PROP_SYS_FABRIC_IS_EXTERNALLY_MANAGED) &&
-            pKernelNvlink->pNvlinkDev != NULL                                   &&
-            !pKernelNvlink->bFloorSwept)
+            pKernelNvlink->pNvlinkDev != NULL)
         {
+            // The path here is important not getting the connection info
+            FOR_EACH_INDEX_IN_MASK(32, linkId, pKernelNvlink->enabledLinks)
+            {
+                nvlink_lib_discover_and_get_remote_conn_info(
+                            pKernelNvlink->nvlinkLinks[linkId].core_link, &conn_info, 0);
+            }
+            FOR_EACH_INDEX_IN_MASK_END;
+
             numLinksPerIoctrl = knvlinkGetTotalNumLinksPerIoctrl(pGpu, pKernelNvlink);
-            status = knvlinkFloorSweep(pGpu, pKernelNvlink,
+            status = knvlinkFloorSweep_IMPL(pGpu, pKernelNvlink, 
                                     numLinksPerIoctrl, &numActiveLinksPerIoctrl);
 
             if (status != NV_OK)
@@ -153,7 +160,7 @@ knvlinkCoreGetRemoteDeviceInfo_IMPL
                         // discover remote information explicitly.
                         //
                         nvlink_lib_discover_and_get_remote_conn_info(
-                            pKernelNvlink->nvlinkLinks[linkId].core_link, &conn_info, flags);
+                            pKernelNvlink->nvlinkLinks[linkId].core_link, &conn_info, 0);
                     }
                     else
                     {
@@ -1326,7 +1333,6 @@ knvlinkFloorSweep_IMPL
     NvU32   linkId;
     NvU32   tmpDisabledLinkMask    = 0;
     NvU32   tmpEnabledLinkMask     = 0;
-    nvlink_conn_info conn_info;
 
     *pNumActiveLinksPerIoctrl = knvlinkGetNumActiveLinksPerIoctrl(pGpu, pKernelNvlink);
     if (!knvlinkIsFloorSweepingNeeded_HAL(pGpu, pKernelNvlink, *pNumActiveLinksPerIoctrl, numLinksPerIoctrl))
@@ -1334,13 +1340,11 @@ knvlinkFloorSweep_IMPL
         return NV_OK;
     }
 
-    // The path here is important not getting the connection info
-    FOR_EACH_INDEX_IN_MASK(32, linkId, pKernelNvlink->enabledLinks)
-    {
-        nvlink_lib_discover_and_get_remote_conn_info(
-                    pKernelNvlink->nvlinkLinks[linkId].core_link, &conn_info, 0);
-    }
-    FOR_EACH_INDEX_IN_MASK_END;
+    //
+    // This call must be before the floorswept to cache the NVLink bridge
+    // information in physical RM.
+    //
+    knvlinkDirectConnectCheck_HAL(pGpu, pKernelNvlink);
 
     // floorsweeping in corelib will update connection info that RM qill query below
     (void)nvlink_lib_powerdown_floorswept_links_to_off(pKernelNvlink->pNvlinkDev);
